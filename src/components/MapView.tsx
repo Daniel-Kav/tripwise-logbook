@@ -2,8 +2,8 @@
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
-  Map, Route, Navigation, Clock, Bed, Coffee, GasPump, 
-  Plus, Minus, FileText, Truck, AlertTriangle 
+  Map, Route, Navigation, Clock, Bed, Coffee, 
+  Plus, Minus, FileText, Truck, AlertTriangle, Fuel 
 } from 'lucide-react';
 
 interface MapViewProps {
@@ -97,7 +97,7 @@ const MapView = ({
                 Rest Stops: {restStops.filter(s => s.type === 'rest').length}
               </div>
               <div className="flex items-center text-gray-600">
-                <GasPump className="h-3 w-3 mr-1" />
+                <Fuel className="h-3 w-3 mr-1" />
                 Fuel Stops: {restStops.filter(s => s.type === 'fuel').length}
               </div>
             </div>
@@ -127,7 +127,7 @@ const MapView = ({
           {restStops.map((stop, index) => (
             <div key={index} className="flex items-start p-2 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
               {stop.type === 'rest' && <Bed className="h-4 w-4 text-blue-500 mt-1 mr-3 flex-shrink-0" />}
-              {stop.type === 'fuel' && <GasPump className="h-4 w-4 text-green-500 mt-1 mr-3 flex-shrink-0" />}
+              {stop.type === 'fuel' && <Fuel className="h-4 w-4 text-green-500 mt-1 mr-3 flex-shrink-0" />}
               {stop.type === 'food' && <Coffee className="h-4 w-4 text-amber-500 mt-1 mr-3 flex-shrink-0" />}
               
               <div className="flex-1">
