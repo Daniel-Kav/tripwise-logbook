@@ -20,6 +20,7 @@ const LogGenerator = () => {
   const navigate = useNavigate();
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
+  const [loading, setLoading] = useState(true); // Add loading state 
   const [tripData, setTripData] = useState<{
     tripDetails: TripDetails | null;
     restStops: RestStop[] | null;
@@ -52,6 +53,9 @@ const LogGenerator = () => {
       const generatedLogs = generateELDLogs(tripDetails, segments, restStops);
       setLogs(generatedLogs);
     }
+    
+    // Set loading to false after data is processed
+    setLoading(false);
   }, []);
 
   const handlePrevDay = () => {
@@ -113,7 +117,22 @@ const LogGenerator = () => {
             </div>
           </div>
           
-          {logs.length > 0 ? (
+          {loading ? (
+            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <FileText size={24} className="text-gray-400" />
+                </div>
+                <h3 className="text-xl font-medium text-gray-900 mb-3">Loading Logs</h3>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Please wait while we retrieve your ELD logs.
+                </p>
+                <div className="flex justify-center">
+                  <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                </div>
+              </div>
+            </div>
+          ) : logs.length > 0 ? (
             <div className="grid grid-cols-1 gap-6">
               <LogSheet
                 date={logs[currentLogIndex].date}
@@ -201,3 +220,4 @@ const LogGenerator = () => {
 };
 
 export default LogGenerator;
+

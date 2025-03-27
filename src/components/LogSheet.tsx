@@ -51,7 +51,7 @@ const LogSheet = ({
   truckNumber = 'TRK-12345',
   startLocation,
   endLocation,
-  logs,
+  logs = [], // Provide default empty array to prevent undefined
   onPrevDay,
   onNextDay
 }: LogSheetProps) => {
@@ -288,7 +288,7 @@ const LogSheet = ({
         <div className="border border-black rounded p-3 mb-4">
           <div className="font-bold text-sm border-b border-black pb-1">Remarks</div>
           <div className="min-h-[100px] pt-2 text-sm">
-            {selectedLog !== null ? (
+            {selectedLog !== null && logs[selectedLog] ? (
               <div>
                 <p>
                   <span className="font-semibold">{logs[selectedLog].startTime} - {logs[selectedLog].endTime}:</span> {" "}
@@ -411,21 +411,6 @@ const LogSheet = ({
   );
 };
 
-// Import for Icon that was missing in the component
-const MapPin = ({ className }: { className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-
+// Remove unused MapPin component that was in the original file
 export default LogSheet;
+
