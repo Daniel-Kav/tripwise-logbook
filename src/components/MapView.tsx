@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -15,6 +14,7 @@ import Feature from 'ol/Feature';
 import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import { Circle as CircleStyle, Fill, Stroke, Style, Text, Icon } from 'ol/style';
+import { defaults as defaultControls } from 'ol/control';
 import 'ol/ol.css';
 
 interface MapViewProps {
@@ -30,11 +30,7 @@ interface MapViewProps {
   onGenerateLogs?: () => void;
 }
 
-// Helper function to get coordinates from location names
-// In a real app, you would use a geocoding service
 const getCoordinates = (location: string): [number, number] => {
-  // This is a simple mock implementation
-  // Returns dummy coordinates based on location names
   const locations: Record<string, [number, number]> = {
     'Atlanta, GA': [-84.39, 33.75],
     'Nashville, TN': [-86.78, 36.16],
@@ -68,11 +64,9 @@ const getCoordinates = (location: string): [number, number] => {
     'Washington, DC': [-77.04, 38.91],
   };
 
-  // Return default coordinates if location is not found
-  return locations[location] || [-98.58, 39.83]; // Center of US as default
+  return locations[location] || [-98.58, 39.83];
 };
 
-// Create a style for route line
 const routeStyle = new Style({
   stroke: new Stroke({
     color: '#0061ff',
@@ -80,7 +74,6 @@ const routeStyle = new Style({
   }),
 });
 
-// Create styles for different stop types
 const stopStyles: Record<string, Style> = {
   rest: new Style({
     image: new CircleStyle({
@@ -126,7 +119,6 @@ const stopStyles: Record<string, Style> = {
   }),
 };
 
-// Style for start/end locations
 const locationStyle = new Style({
   image: new CircleStyle({
     radius: 10,
@@ -151,28 +143,22 @@ const MapView = ({
   const mapRef = useRef<HTMLDivElement>(null);
   const olMapRef = useRef<ol.Map | null>(null);
 
-  // Create route and markers
   useEffect(() => {
     if (!mapRef.current) return;
     
-    // Get coordinates
     const startCoords = getCoordinates(startLocation);
     const endCoords = getCoordinates(endLocation);
     
-    // Convert to OpenLayers projection
     const startPoint = fromLonLat(startCoords);
     const endPoint = fromLonLat(endCoords);
     
-    // Create route feature
     const routeCoordinates = [startPoint, endPoint];
     
-    // Add intermediate points if we have rest stops
     const stopCoordinates = restStops.map(stop => {
       const coords = getCoordinates(stop.location);
       return fromLonLat(coords);
     });
 
-    // Add stop coordinates between start and end for route line
     if (stopCoordinates.length > 0) {
       routeCoordinates.splice(1, 0, ...stopCoordinates);
     }
@@ -184,7 +170,6 @@ const MapView = ({
     
     routeFeature.setStyle(routeStyle);
     
-    // Create vector source and layer for route
     const routeSource = new VectorSource({
       features: [routeFeature],
     });
@@ -193,7 +178,6 @@ const MapView = ({
       source: routeSource,
     });
     
-    // Create markers for start and end locations
     const startFeature = new Feature({
       geometry: new Point(startPoint),
       name: startLocation,
@@ -208,7 +192,6 @@ const MapView = ({
       isEnd: true,
     });
     
-    // Set styles for start/end features
     const startStyle = locationStyle.clone();
     startStyle.getText().setText('Start: ' + startLocation);
     startFeature.setStyle(startStyle);
@@ -217,7 +200,6 @@ const MapView = ({
     endStyle.getText().setText('End: ' + endLocation);
     endFeature.setStyle(endStyle);
     
-    // Create features for rest stops
     const stopFeatures = restStops.map((stop, index) => {
       const coords = getCoordinates(stop.location);
       const feature = new Feature({
@@ -230,7 +212,6 @@ const MapView = ({
         index,
       });
       
-      // Set style based on stop type
       const stopStyle = stopStyles[stop.type].clone();
       stopStyle.getText().setText(stop.location);
       feature.setStyle(stopStyle);
@@ -238,7 +219,6 @@ const MapView = ({
       return feature;
     });
     
-    // Create vector source and layer for markers
     const markerSource = new VectorSource({
       features: [startFeature, endFeature, ...stopFeatures],
     });
@@ -247,11 +227,9 @@ const MapView = ({
       source: markerSource,
     });
     
-    // Create map
     olMapRef.current = new ol.Map({
       target: mapRef.current,
       layers: [
-        // Base tile layer (OpenStreetMap)
         new TileLayer({
           source: new OSM(),
         }),
@@ -259,24 +237,22 @@ const MapView = ({
         markerLayer,
       ],
       view: new ol.View({
-        center: fromLonLat([-95.7129, 37.0902]), // Center of US
+        center: fromLonLat([-95.7129, 37.0902]),
         zoom: 4,
       }),
-      controls: ol.control.defaults({
+      controls: defaultControls({
         zoom: false,
         rotate: false,
         attribution: false,
       }),
     });
     
-    // Fit map to route extent with padding
     const routeExtent = routeSource.getExtent();
     olMapRef.current.getView().fit(routeExtent, {
       padding: [50, 50, 50, 50],
       maxZoom: 12,
     });
     
-    // Add click event for markers
     olMapRef.current.on('click', (event) => {
       const feature = olMapRef.current?.forEachFeatureAtPixel(
         event.pixel,
@@ -298,7 +274,6 @@ const MapView = ({
       }
     });
     
-    // Clean up
     return () => {
       if (olMapRef.current) {
         olMapRef.current.setTarget(undefined);
@@ -307,7 +282,6 @@ const MapView = ({
     };
   }, [startLocation, endLocation, restStops]);
 
-  // Handle zoom in/out
   const handleZoomIn = () => {
     if (olMapRef.current) {
       const view = olMapRef.current.getView();
@@ -348,7 +322,6 @@ const MapView = ({
           ref={mapRef}
           className="h-96 bg-gray-100 relative"
         >
-          {/* Map controls */}
           <div className="absolute top-4 right-4 flex flex-col space-y-2 z-10">
             <Button size="icon" variant="outline" className="h-8 w-8 bg-white shadow-sm" onClick={handleZoomIn}>
               <Plus className="h-4 w-4" />
@@ -358,7 +331,6 @@ const MapView = ({
             </Button>
           </div>
           
-          {/* Route summary overlay */}
           <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-gray-100 max-w-xs z-10">
             <div className="flex items-center text-sm font-medium text-gray-900 mb-2">
               <Route className="h-4 w-4 text-primary mr-2" />
@@ -384,7 +356,6 @@ const MapView = ({
             </div>
           </div>
           
-          {/* FMCSA compliance alert */}
           <div className="absolute bottom-4 right-4 bg-amber-50/90 backdrop-blur-sm p-3 rounded-lg shadow-sm border border-amber-100 max-w-xs z-10">
             <div className="flex items-center text-sm font-medium text-amber-800 mb-1">
               <AlertTriangle className="h-4 w-4 text-amber-500 mr-1" />
@@ -397,7 +368,6 @@ const MapView = ({
         </div>
       </div>
       
-      {/* Rest stops details */}
       <div className="p-4 border-t border-gray-100">
         <h4 className="font-medium text-sm text-gray-900 mb-3 flex items-center">
           <Clock className="h-4 w-4 text-primary mr-2" />
