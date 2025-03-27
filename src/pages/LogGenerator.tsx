@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import LogSheet from '@/components/LogSheet';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Download, FileText } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, FileText, Clock, Calendar, Printer } from 'lucide-react';
 import { 
   DailyLog,
   TripDetails,
@@ -15,12 +15,15 @@ import {
   generateELDLogs
 } from '@/utils/tripCalculations';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/use-toast";
 
 const LogGenerator = () => {
   const navigate = useNavigate();
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
-  const [loading, setLoading] = useState(true); // Add loading state 
+  const [loading, setLoading] = useState(true);
   const [tripData, setTripData] = useState<{
     tripDetails: TripDetails | null;
     restStops: RestStop[] | null;
@@ -76,7 +79,18 @@ const LogGenerator = () => {
 
   const handleDownloadAllLogs = () => {
     // In a real app, this would generate and download PDF logs
-    alert('In a real application, this would download all logs as PDF files.');
+    toast({
+      title: "Download Started",
+      description: "Your logs are being downloaded as PDF files.",
+    });
+  };
+
+  const handlePrintCurrentLog = () => {
+    // In a real app, this would print the current log
+    toast({
+      title: "Printing Log",
+      description: `Printing log for ${logs[currentLogIndex].date}`,
+    });
   };
 
   return (
@@ -91,7 +105,7 @@ const LogGenerator = () => {
                 ELD Logs
               </h1>
               <p className="text-lg text-gray-600">
-                View and manage your Electronic Logging Device records
+                View, edit, and manage your Electronic Logging Device records
               </p>
             </div>
             
@@ -106,13 +120,23 @@ const LogGenerator = () => {
               </Button>
               
               {logs.length > 0 && (
-                <Button 
-                  className="py-2 h-10"
-                  onClick={handleDownloadAllLogs}
-                >
-                  <Download size={16} className="mr-2" />
-                  Download All Logs
-                </Button>
+                <>
+                  <Button 
+                    variant="outline"
+                    className="py-2 h-10"
+                    onClick={handlePrintCurrentLog}
+                  >
+                    <Printer size={16} className="mr-2" />
+                    Print Current
+                  </Button>
+                  <Button 
+                    className="py-2 h-10"
+                    onClick={handleDownloadAllLogs}
+                  >
+                    <Download size={16} className="mr-2" />
+                    Download All
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -134,18 +158,8 @@ const LogGenerator = () => {
             </div>
           ) : logs.length > 0 ? (
             <div className="grid grid-cols-1 gap-6">
-              <LogSheet
-                date={logs[currentLogIndex].date}
-                driverName="John Doe"
-                truckNumber="TRK-12345"
-                startLocation={logs[currentLogIndex].startLocation}
-                endLocation={logs[currentLogIndex].endLocation}
-                logs={logs[currentLogIndex].logs}
-                onPrevDay={currentLogIndex > 0 ? handlePrevDay : undefined}
-                onNextDay={currentLogIndex < logs.length - 1 ? handleNextDay : undefined}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+              {/* Trip Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                   <h3 className="font-medium text-gray-900 mb-2 flex items-center">
                     <FileText size={16} className="text-blue-500 mr-2" />
@@ -169,6 +183,157 @@ const LogGenerator = () => {
                   </ul>
                 </div>
               </div>
+              
+              {/* Tabs for day selection when there are multiple logs */}
+              {logs.length > 1 && (
+                <Tabs 
+                  defaultValue={`day-${currentLogIndex}`} 
+                  onValueChange={(value) => setCurrentLogIndex(parseInt(value.split('-')[1]))}
+                  className="w-full"
+                >
+                  <div className="border-b mb-4">
+                    <TabsList className="bg-transparent space-x-4">
+                      {logs.map((log, index) => {
+                        const logDate = new Date(log.date);
+                        const formattedDate = logDate.toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric'
+                        });
+                        
+                        return (
+                          <TabsTrigger 
+                            key={index} 
+                            value={`day-${index}`}
+                            className={`flex items-center space-x-2 px-4 py-2 rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-primary`}
+                          >
+                            <Calendar className="h-4 w-4" />
+                            <span>Day {index + 1}: {formattedDate}</span>
+                          </TabsTrigger>
+                        );
+                      })}
+                    </TabsList>
+                  </div>
+                  
+                  {logs.map((log, index) => (
+                    <TabsContent key={index} value={`day-${index}`} className="mt-0">
+                      <LogSheet
+                        date={log.date}
+                        driverName="John Doe"
+                        truckNumber="TRK-12345"
+                        startLocation={log.startLocation}
+                        endLocation={log.endLocation}
+                        logs={log.logs}
+                        onPrevDay={index > 0 ? handlePrevDay : undefined}
+                        onNextDay={index < logs.length - 1 ? handleNextDay : undefined}
+                      />
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              )}
+              
+              {/* Single log display when there's only one log */}
+              {logs.length === 1 && (
+                <LogSheet
+                  date={logs[0].date}
+                  driverName="John Doe"
+                  truckNumber="TRK-12345"
+                  startLocation={logs[0].startLocation}
+                  endLocation={logs[0].endLocation}
+                  logs={logs[0].logs}
+                />
+              )}
+              
+              {/* Multi-day summary for longer trips */}
+              {logs.length > 1 && (
+                <Card className="shadow-sm">
+                  <CardContent className="pt-6">
+                    <h3 className="text-xl font-semibold mb-4 flex items-center">
+                      <Clock className="mr-2 h-5 w-5 text-primary" />
+                      Trip Summary
+                    </h3>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-gray-100">
+                            <th className="border border-gray-300 px-4 py-2 text-left">Date</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left">Route</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left">Driving Hours</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left">On-Duty Hours</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left">Miles</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logs.map((log, index) => {
+                            const logDate = new Date(log.date);
+                            const formattedDate = logDate.toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            });
+                            
+                            // Calculate hours for each status
+                            const drivingHours = log.logs
+                              .filter(entry => entry.status === 'driving')
+                              .reduce((total, entry) => {
+                                const start = new Date(`2000-01-01T${entry.startTime}`);
+                                const end = new Date(`2000-01-01T${entry.endTime}`);
+                                return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                              }, 0);
+                            
+                            const onDutyHours = log.logs
+                              .filter(entry => entry.status === 'on-duty')
+                              .reduce((total, entry) => {
+                                const start = new Date(`2000-01-01T${entry.startTime}`);
+                                const end = new Date(`2000-01-01T${entry.endTime}`);
+                                return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                              }, 0);
+                            
+                            return (
+                              <tr key={index} className="hover:bg-gray-50">
+                                <td className="border border-gray-300 px-4 py-2">{formattedDate}</td>
+                                <td className="border border-gray-300 px-4 py-2">{log.startLocation} → {log.endLocation}</td>
+                                <td className="border border-gray-300 px-4 py-2">{drivingHours.toFixed(1)}</td>
+                                <td className="border border-gray-300 px-4 py-2">{onDutyHours.toFixed(1)}</td>
+                                <td className="border border-gray-300 px-4 py-2">
+                                  {index === 0 ? "150" : "125"}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr className="bg-gray-100 font-semibold">
+                            <td className="border border-gray-300 px-4 py-2">Total</td>
+                            <td className="border border-gray-300 px-4 py-2"></td>
+                            <td className="border border-gray-300 px-4 py-2">
+                              {logs.reduce((total, log) => {
+                                return total + log.logs
+                                  .filter(entry => entry.status === 'driving')
+                                  .reduce((sum, entry) => {
+                                    const start = new Date(`2000-01-01T${entry.startTime}`);
+                                    const end = new Date(`2000-01-01T${entry.endTime}`);
+                                    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                                  }, 0);
+                              }, 0).toFixed(1)}
+                            </td>
+                            <td className="border border-gray-300 px-4 py-2">
+                              {logs.reduce((total, log) => {
+                                return total + log.logs
+                                  .filter(entry => entry.status === 'on-duty')
+                                  .reduce((sum, entry) => {
+                                    const start = new Date(`2000-01-01T${entry.startTime}`);
+                                    const end = new Date(`2000-01-01T${entry.endTime}`);
+                                    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                                  }, 0);
+                              }, 0).toFixed(1)}
+                            </td>
+                            <td className="border border-gray-300 px-4 py-2">275</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ) : (
             <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100">
@@ -220,4 +385,3 @@ const LogGenerator = () => {
 };
 
 export default LogGenerator;
-

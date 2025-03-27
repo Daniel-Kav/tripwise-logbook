@@ -1,18 +1,22 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Download, Calendar, Clock, User, Truck, 
-  FileText, ChevronLeft, ChevronRight, Printer 
+  FileText, ChevronLeft, ChevronRight, Printer,
+  PenTool, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { 
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import LogDrawingCanvas from './LogDrawingCanvas';
 
 interface LogSheetProps {
   date: string;
@@ -57,12 +61,70 @@ const LogSheet = ({
 }: LogSheetProps) => {
   const [selectedLog, setSelectedLog] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [editingMode, setEditingMode] = useState(false);
+  const [annotations, setAnnotations] = useState<string | null>(null);
+  const [driverSignature, setDriverSignature] = useState<string | null>(null);
+  const [editedDriverName, setEditedDriverName] = useState(driverName);
+  const [editedTruckNumber, setEditedTruckNumber] = useState(truckNumber);
+  const [mainOfficeAddress, setMainOfficeAddress] = useState("123 Transport Way, Springfield, IL");
+  const [homeTerminalAddress, setHomeTerminalAddress] = useState("456 Logistics Drive, Springfield, IL");
+  const [bolNumber, setBolNumber] = useState("BOL-12345-789");
+  const [shipperInfo, setShipperInfo] = useState("XYZ Manufacturing - Industrial Equipment");
+  const [isCertified, setIsCertified] = useState(false);
 
   // Parse date components
   const dateObj = new Date(date);
   const month = dateObj.toLocaleString('default', { month: 'short' });
   const day = dateObj.getDate();
   const year = dateObj.getFullYear();
+
+  // Save form data to local storage when edited
+  useEffect(() => {
+    if (editingMode) return;
+    
+    const logData = {
+      driverName: editedDriverName,
+      truckNumber: editedTruckNumber,
+      mainOfficeAddress,
+      homeTerminalAddress,
+      bolNumber,
+      shipperInfo,
+      isCertified,
+      annotations,
+      driverSignature
+    };
+    
+    localStorage.setItem(`log-${date}`, JSON.stringify(logData));
+  }, [
+    editingMode, 
+    editedDriverName, 
+    editedTruckNumber, 
+    mainOfficeAddress, 
+    homeTerminalAddress, 
+    bolNumber, 
+    shipperInfo, 
+    isCertified,
+    annotations,
+    driverSignature,
+    date
+  ]);
+
+  // Load saved data on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem(`log-${date}`);
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      setEditedDriverName(parsedData.driverName || driverName);
+      setEditedTruckNumber(parsedData.truckNumber || truckNumber);
+      setMainOfficeAddress(parsedData.mainOfficeAddress || "123 Transport Way, Springfield, IL");
+      setHomeTerminalAddress(parsedData.homeTerminalAddress || "456 Logistics Drive, Springfield, IL");
+      setBolNumber(parsedData.bolNumber || "BOL-12345-789");
+      setShipperInfo(parsedData.shipperInfo || "XYZ Manufacturing - Industrial Equipment");
+      setIsCertified(parsedData.isCertified || false);
+      setAnnotations(parsedData.annotations || null);
+      setDriverSignature(parsedData.driverSignature || null);
+    }
+  }, [date, driverName, truckNumber]);
 
   // Helper function to calculate total hours for each status
   const calculateTotalHours = (status: 'driving' | 'on-duty' | 'off-duty' | 'sleeper') => {
@@ -142,7 +204,7 @@ const LogSheet = ({
                   </div>
 
                   {/* Render log segments for this status */}
-                  {logs
+                  {logs && logs
                     .filter(log => log.status === status)
                     .map((log, index) => {
                       const startHour = parseInt(log.startTime.split(':')[0]);
@@ -229,6 +291,25 @@ const LogSheet = ({
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>
             )}
+            
+            <Button
+              variant={editingMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEditingMode(!editingMode)}
+              className="h-8"
+            >
+              {editingMode ? (
+                <>
+                  <Save className="h-4 w-4 mr-1" />
+                  <span>Save</span>
+                </>
+              ) : (
+                <>
+                  <PenTool className="h-4 w-4 mr-1" />
+                  <span>Edit</span>
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -239,11 +320,27 @@ const LogSheet = ({
             <div className="flex justify-between mb-2">
               <div>
                 <div className="text-xs text-gray-500">From:</div>
-                <div className="text-sm font-medium">{startLocation}</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7 w-40"
+                    value={startLocation}
+                    readOnly
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{startLocation}</div>
+                )}
               </div>
               <div>
                 <div className="text-xs text-gray-500">To:</div>
-                <div className="text-sm font-medium">{endLocation}</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7 w-40"
+                    value={endLocation}
+                    readOnly
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{endLocation}</div>
+                )}
               </div>
             </div>
             
@@ -263,17 +360,53 @@ const LogSheet = ({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-xs text-gray-500">Name of Carrier or Drivers:</div>
-                <div className="text-sm font-medium">{driverName}</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={editedDriverName}
+                    onChange={(e) => setEditedDriverName(e.target.value)}
+                    placeholder="Driver Name"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{editedDriverName}</div>
+                )}
                 
                 <div className="text-xs text-gray-500 mt-2">Unit/Trailer and Entity Numbers or License/State/Unit:</div>
-                <div className="text-sm font-medium">{truckNumber}</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={editedTruckNumber}
+                    onChange={(e) => setEditedTruckNumber(e.target.value)}
+                    placeholder="Truck Number"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{editedTruckNumber}</div>
+                )}
               </div>
               <div>
                 <div className="text-xs text-gray-500">Main Office Address:</div>
-                <div className="text-sm font-medium">123 Transport Way, Springfield, IL</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={mainOfficeAddress}
+                    onChange={(e) => setMainOfficeAddress(e.target.value)}
+                    placeholder="Main Office Address"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{mainOfficeAddress}</div>
+                )}
                 
                 <div className="text-xs text-gray-500 mt-2">Home Terminal Address:</div>
-                <div className="text-sm font-medium">456 Logistics Drive, Springfield, IL</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={homeTerminalAddress}
+                    onChange={(e) => setHomeTerminalAddress(e.target.value)}
+                    placeholder="Home Terminal Address"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{homeTerminalAddress}</div>
+                )}
               </div>
             </div>
           </div>
@@ -284,11 +417,33 @@ const LogSheet = ({
           {renderLogGrid()}
         </div>
         
+        {/* Annotations Drawing Canvas */}
+        <div className="border border-black rounded p-3 mb-4">
+          <div className="font-bold text-sm border-b border-black pb-1 mb-2">
+            Annotations and Diagram
+          </div>
+          
+          <LogDrawingCanvas 
+            width={700} 
+            height={200} 
+            className="mx-auto mb-2"
+            onSave={(dataUrl) => setAnnotations(dataUrl)}
+          />
+          
+          {annotations && !editingMode && (
+            <img 
+              src={annotations} 
+              alt="Log Annotations" 
+              className="max-w-full mx-auto border border-gray-200 rounded"
+            />
+          )}
+        </div>
+        
         {/* Remarks Section */}
         <div className="border border-black rounded p-3 mb-4">
           <div className="font-bold text-sm border-b border-black pb-1">Remarks</div>
           <div className="min-h-[100px] pt-2 text-sm">
-            {selectedLog !== null && logs[selectedLog] ? (
+            {selectedLog !== null && logs && logs[selectedLog] ? (
               <div>
                 <p>
                   <span className="font-semibold">{logs[selectedLog].startTime} - {logs[selectedLog].endTime}:</span> {" "}
@@ -296,7 +451,7 @@ const LogSheet = ({
                 </p>
               </div>
             ) : (
-              logs.map((log, index) => (
+              logs && logs.map((log, index) => (
                 <p key={index} className="mb-1">
                   <span className="font-semibold">{log.startTime} - {log.endTime}:</span> {" "}
                   {log.remarks || `${StatusLabelMap[log.status]} at ${log.location}`}
@@ -322,11 +477,29 @@ const LogSheet = ({
             <div className="p-3 border-t border-black">
               <div className="mb-2">
                 <div className="text-xs text-gray-500">BOL or Manifest No.</div>
-                <div className="text-sm font-medium">BOL-12345-789</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={bolNumber}
+                    onChange={(e) => setBolNumber(e.target.value)}
+                    placeholder="BOL Number"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{bolNumber}</div>
+                )}
               </div>
               <div>
                 <div className="text-xs text-gray-500">Shipper & Commodity</div>
-                <div className="text-sm font-medium">XYZ Manufacturing - Industrial Equipment</div>
+                {editingMode ? (
+                  <Input 
+                    className="text-sm h-7"
+                    value={shipperInfo}
+                    onChange={(e) => setShipperInfo(e.target.value)}
+                    placeholder="Shipper & Commodity"
+                  />
+                ) : (
+                  <div className="text-sm font-medium">{shipperInfo}</div>
+                )}
               </div>
             </div>
           </CollapsibleContent>
@@ -387,12 +560,39 @@ const LogSheet = ({
           </Table>
         </div>
         
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between md:items-center space-y-4 md:space-y-0">
           <div className="flex items-center space-x-2">
-            <Checkbox id="certification" />
+            <Checkbox 
+              id="certification" 
+              checked={isCertified}
+              onCheckedChange={(checked) => setIsCertified(checked === true)}
+            />
             <label htmlFor="certification" className="text-sm font-medium">
               I hereby certify that the information contained in this log is true and accurate
             </label>
+          </div>
+          
+          {/* Driver Signature */}
+          <div className="flex flex-col space-y-2">
+            <div className="text-xs text-gray-500">Driver Signature:</div>
+            {editingMode ? (
+              <LogDrawingCanvas 
+                width={200} 
+                height={60} 
+                className="border border-gray-300 rounded"
+                onSave={(dataUrl) => setDriverSignature(dataUrl)}
+              />
+            ) : (
+              driverSignature ? (
+                <img 
+                  src={driverSignature} 
+                  alt="Driver Signature" 
+                  className="h-12 border-b border-black"
+                />
+              ) : (
+                <div className="w-[200px] h-[40px] border-b border-black"></div>
+              )
+            )}
           </div>
           
           <div className="flex space-x-2">
@@ -411,6 +611,4 @@ const LogSheet = ({
   );
 };
 
-// Remove unused MapPin component that was in the original file
 export default LogSheet;
-
