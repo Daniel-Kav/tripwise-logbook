@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Download, Calendar, Clock, User, Truck, 
   FileText, ChevronLeft, ChevronRight, Printer,
-  PenTool, Save
+  PenTool, Save, Edit, X, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,11 +10,24 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { 
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { toast } from "@/components/ui/use-toast";
 import LogDrawingCanvas from './LogDrawingCanvas';
 
 interface LogSheetProps {
@@ -33,6 +45,7 @@ interface LogSheetProps {
   }[];
   onPrevDay?: () => void;
   onNextDay?: () => void;
+  onLogsUpdate?: (logs: any[]) => void;
 }
 
 const StatusColorMap = {
@@ -57,11 +70,15 @@ const LogSheet = ({
   endLocation,
   logs = [], // Provide default empty array to prevent undefined
   onPrevDay,
-  onNextDay
+  onNextDay,
+  onLogsUpdate
 }: LogSheetProps) => {
   const [selectedLog, setSelectedLog] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [editingMode, setEditingMode] = useState(false);
+  const [editingLogIndex, setEditingLogIndex] = useState<number | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [localLogs, setLocalLogs] = useState(logs);
   const [annotations, setAnnotations] = useState<string | null>(null);
   const [driverSignature, setDriverSignature] = useState<string | null>(null);
   const [editedDriverName, setEditedDriverName] = useState(driverName);
@@ -72,13 +89,25 @@ const LogSheet = ({
   const [shipperInfo, setShipperInfo] = useState("XYZ Manufacturing - Industrial Equipment");
   const [isCertified, setIsCertified] = useState(false);
 
-  // Parse date components
+  const form = useForm({
+    defaultValues: {
+      startTime: "",
+      endTime: "",
+      status: "driving" as 'driving' | 'on-duty' | 'off-duty' | 'sleeper',
+      location: "",
+      remarks: ""
+    }
+  });
+
+  useEffect(() => {
+    setLocalLogs(logs);
+  }, [logs]);
+
   const dateObj = new Date(date);
   const month = dateObj.toLocaleString('default', { month: 'short' });
   const day = dateObj.getDate();
   const year = dateObj.getFullYear();
 
-  // Save form data to local storage when edited
   useEffect(() => {
     if (editingMode) return;
     
@@ -109,7 +138,6 @@ const LogSheet = ({
     date
   ]);
 
-  // Load saved data on mount
   useEffect(() => {
     const savedData = localStorage.getItem(`log-${date}`);
     if (savedData) {
@@ -126,9 +154,8 @@ const LogSheet = ({
     }
   }, [date, driverName, truckNumber]);
 
-  // Helper function to calculate total hours for each status
   const calculateTotalHours = (status: 'driving' | 'on-duty' | 'off-duty' | 'sleeper') => {
-    return logs
+    return localLogs
       .filter(log => log.status === status)
       .reduce((total, log) => {
         const start = new Date(`2000-01-01T${log.startTime}`);
@@ -139,19 +166,148 @@ const LogSheet = ({
       .toFixed(1);
   };
 
-  // Calculate accumulated total hours
   const totalDrivingHours = Number(calculateTotalHours('driving'));
   const totalOnDutyHours = Number(calculateTotalHours('on-duty'));
   const totalHours = totalDrivingHours + totalOnDutyHours;
 
-  // Render the log grid (24-hour timeline with FMCSA format)
+  const handleEditLog = (index: number) => {
+    setEditingLogIndex(index);
+    const logToEdit = localLogs[index];
+    form.reset({
+      startTime: logToEdit.startTime,
+      endTime: logToEdit.endTime,
+      status: logToEdit.status,
+      location: logToEdit.location,
+      remarks: logToEdit.remarks || ""
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEditedLog = (data: any) => {
+    if (editingLogIndex === null) return;
+    
+    const updatedLogs = [...localLogs];
+    updatedLogs[editingLogIndex] = {
+      ...updatedLogs[editingLogIndex],
+      ...data
+    };
+    updatedLogs.sort((a, b) => {
+      const timeA = new Date(`2000-01-01T${a.startTime}`).getTime();
+      const timeB = new Date(`2000-01-01T${b.startTime}`).getTime();
+      return timeA - timeB;
+    });
+    setLocalLogs(updatedLogs);
+    if (onLogsUpdate) {
+      onLogsUpdate(updatedLogs);
+    }
+    setEditDialogOpen(false);
+    setEditingLogIndex(null);
+    toast({
+      title: "Log Entry Updated",
+      description: "Your changes have been saved successfully."
+    });
+  };
+
+  const handleAddNewLog = () => {
+    form.reset({
+      startTime: "08:00",
+      endTime: "09:00",
+      status: "driving",
+      location: startLocation,
+      remarks: ""
+    });
+    setEditingLogIndex(null);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveNewLog = (data: any) => {
+    const startTime = new Date(`2000-01-01T${data.startTime}`);
+    const endTime = new Date(`2000-01-01T${data.endTime}`);
+    
+    if (endTime <= startTime) {
+      toast({
+        title: "Invalid Time Range",
+        description: "End time must be after start time.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const hasOverlap = localLogs.some(log => {
+      const existingStart = new Date(`2000-01-01T${log.startTime}`);
+      const existingEnd = new Date(`2000-01-01T${log.endTime}`);
+      
+      return (
+        (startTime >= existingStart && startTime < existingEnd) ||
+        (endTime > existingStart && endTime <= existingEnd) ||
+        (startTime <= existingStart && endTime >= existingEnd)
+      );
+    });
+    
+    if (hasOverlap) {
+      toast({
+        title: "Time Conflict",
+        description: "This time range overlaps with an existing log entry.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const newLog = {
+      startTime: data.startTime,
+      endTime: data.endTime,
+      status: data.status,
+      location: data.location,
+      remarks: data.remarks
+    };
+    
+    const updatedLogs = [...localLogs, newLog].sort((a, b) => {
+      const timeA = new Date(`2000-01-01T${a.startTime}`).getTime();
+      const timeB = new Date(`2000-01-01T${b.startTime}`).getTime();
+      return timeA - timeB;
+    });
+    
+    setLocalLogs(updatedLogs);
+    if (onLogsUpdate) {
+      onLogsUpdate(updatedLogs);
+    }
+    setEditDialogOpen(false);
+    toast({
+      title: "Log Entry Added",
+      description: "Your new log entry has been added successfully."
+    });
+  };
+
+  const handleDeleteLog = () => {
+    if (editingLogIndex === null) return;
+    
+    const updatedLogs = localLogs.filter((_, index) => index !== editingLogIndex);
+    setLocalLogs(updatedLogs);
+    if (onLogsUpdate) {
+      onLogsUpdate(updatedLogs);
+    }
+    setEditDialogOpen(false);
+    setEditingLogIndex(null);
+    toast({
+      title: "Log Entry Deleted",
+      description: "The log entry has been removed."
+    });
+  };
+
+  const onSubmit = (data: any) => {
+    if (editingLogIndex !== null) {
+      handleSaveEditedLog(data);
+    } else {
+      handleSaveNewLog(data);
+    }
+  };
+
   const renderLogGrid = () => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
       <div className="mt-4 overflow-x-auto">
         <div className="min-w-max">
-          {/* Hour markers */}
           <div className="flex border-b border-black">
             <div className="w-20"></div>
             <div className="flex-1 flex">
@@ -182,9 +338,7 @@ const LogSheet = ({
             <div className="w-12"></div>
           </div>
 
-          {/* Status grid - FMCSA format */}
           {['off-duty', 'sleeper', 'driving', 'on-duty'].map((status, rowIndex) => {
-            // Calculate total hours for this status
             const statusHours = calculateTotalHours(status as 'driving' | 'on-duty' | 'off-duty' | 'sleeper');
             
             return (
@@ -193,7 +347,6 @@ const LogSheet = ({
                   {rowIndex + 1}. {StatusLabelMap[status as keyof typeof StatusLabelMap]}
                 </div>
                 <div className="flex-1 relative h-8">
-                  {/* Background grid lines */}
                   <div className="absolute inset-0 flex pointer-events-none">
                     {hours.map(hour => (
                       <div 
@@ -202,9 +355,7 @@ const LogSheet = ({
                       ></div>
                     ))}
                   </div>
-
-                  {/* Render log segments for this status */}
-                  {logs && logs
+                  {localLogs && localLogs
                     .filter(log => log.status === status)
                     .map((log, index) => {
                       const startHour = parseInt(log.startTime.split(':')[0]);
@@ -216,14 +367,14 @@ const LogSheet = ({
                       const endPercent = (endHour + endMinutes / 60) / 24 * 100;
                       const widthPercent = endPercent - startPercent;
 
-                      const logIndex = logs.findIndex(
+                      const logIndex = localLogs.findIndex(
                         l => l.startTime === log.startTime && l.status === log.status
                       );
 
                       return (
                         <div
                           key={`${status}-${index}`}
-                          className="absolute h-full top-0"
+                          className="absolute h-full top-0 cursor-pointer hover:brightness-90 transition-all"
                           style={{
                             left: `${startPercent}%`,
                             width: `${widthPercent}%`,
@@ -237,7 +388,8 @@ const LogSheet = ({
                             border: '1px solid black',
                             zIndex: 1,
                           }}
-                          onClick={() => setSelectedLog(logIndex === selectedLog ? null : logIndex)}
+                          onClick={() => handleEditLog(logIndex)}
+                          title={`${log.startTime} - ${log.endTime}: ${StatusLabelMap[log.status]} (Click to edit)`}
                         ></div>
                       );
                     })}
@@ -412,46 +564,38 @@ const LogSheet = ({
           </div>
         </div>
         
-        {/* ELD Graph Section */}
         <div className="border border-black rounded mb-4">
           {renderLogGrid()}
-        </div>
-        
-        {/* Annotations Drawing Canvas */}
-        <div className="border border-black rounded p-3 mb-4">
-          <div className="font-bold text-sm border-b border-black pb-1 mb-2">
-            Annotations and Diagram
+          
+          <div className="p-2 border-t border-black flex justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleAddNewLog}
+              className="flex items-center"
+            >
+              <Edit className="h-4 w-4 mr-1" />
+              Add Log Entry
+            </Button>
           </div>
-          
-          <LogDrawingCanvas 
-            width={700} 
-            height={200} 
-            className="mx-auto mb-2"
-            onSave={(dataUrl) => setAnnotations(dataUrl)}
-          />
-          
-          {annotations && !editingMode && (
-            <img 
-              src={annotations} 
-              alt="Log Annotations" 
-              className="max-w-full mx-auto border border-gray-200 rounded"
-            />
-          )}
         </div>
         
-        {/* Remarks Section */}
         <div className="border border-black rounded p-3 mb-4">
-          <div className="font-bold text-sm border-b border-black pb-1">Remarks</div>
+          <div className="font-bold text-sm border-b border-black pb-1">Remarks and Notes</div>
           <div className="min-h-[100px] pt-2 text-sm">
-            {selectedLog !== null && logs && logs[selectedLog] ? (
+            {localLogs.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">
+                No log entries have been created yet. Click "Add Log Entry" to begin.
+              </div>
+            ) : selectedLog !== null && localLogs[selectedLog] ? (
               <div>
                 <p>
-                  <span className="font-semibold">{logs[selectedLog].startTime} - {logs[selectedLog].endTime}:</span> {" "}
-                  {logs[selectedLog].remarks || `${StatusLabelMap[logs[selectedLog].status]} at ${logs[selectedLog].location}`}
+                  <span className="font-semibold">{localLogs[selectedLog].startTime} - {localLogs[selectedLog].endTime}:</span> {" "}
+                  {localLogs[selectedLog].remarks || `${StatusLabelMap[localLogs[selectedLog].status]} at ${localLogs[selectedLog].location}`}
                 </p>
               </div>
             ) : (
-              logs && logs.map((log, index) => (
+              localLogs.map((log, index) => (
                 <p key={index} className="mb-1">
                   <span className="font-semibold">{log.startTime} - {log.endTime}:</span> {" "}
                   {log.remarks || `${StatusLabelMap[log.status]} at ${log.location}`}
@@ -461,7 +605,6 @@ const LogSheet = ({
           </div>
         </div>
         
-        {/* Shipping Documents */}
         <Collapsible 
           open={showDetails} 
           onOpenChange={setShowDetails}
@@ -505,7 +648,6 @@ const LogSheet = ({
           </CollapsibleContent>
         </Collapsible>
         
-        {/* Summary Table */}
         <div className="border border-black rounded mb-4">
           <Table>
             <TableHeader>
@@ -572,26 +714,16 @@ const LogSheet = ({
             </label>
           </div>
           
-          {/* Driver Signature */}
           <div className="flex flex-col space-y-2">
             <div className="text-xs text-gray-500">Driver Signature:</div>
-            {editingMode ? (
-              <LogDrawingCanvas 
-                width={200} 
-                height={60} 
-                className="border border-gray-300 rounded"
-                onSave={(dataUrl) => setDriverSignature(dataUrl)}
+            {driverSignature ? (
+              <img 
+                src={driverSignature} 
+                alt="Driver Signature" 
+                className="h-12 border-b border-black"
               />
             ) : (
-              driverSignature ? (
-                <img 
-                  src={driverSignature} 
-                  alt="Driver Signature" 
-                  className="h-12 border-b border-black"
-                />
-              ) : (
-                <div className="w-[200px] h-[40px] border-b border-black"></div>
-              )
+              <div className="w-[200px] h-[40px] border-b border-black"></div>
             )}
           </div>
           
@@ -607,6 +739,146 @@ const LogSheet = ({
           </div>
         </div>
       </CardContent>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingLogIndex !== null ? "Edit Log Entry" : "Add New Log Entry"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingLogIndex !== null 
+                ? "Modify the details of this log entry" 
+                : "Create a new log entry for your daily log"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          {...field} 
+                          className="w-full"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="time" 
+                          {...field} 
+                          className="w-full"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="driving">Driving</SelectItem>
+                        <SelectItem value="on-duty">On-Duty (Not Driving)</SelectItem>
+                        <SelectItem value="off-duty">Off-Duty</SelectItem>
+                        <SelectItem value="sleeper">Sleeper Berth</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="remarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        {...field} 
+                        placeholder="Add optional remarks or notes"
+                        rows={3}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              
+              <DialogFooter className="flex justify-between">
+                {editingLogIndex !== null && (
+                  <Button 
+                    type="button" 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleDeleteLog}
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                )}
+                
+                <div className="flex space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setEditDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm">
+                    <Check className="h-4 w-4 mr-1" />
+                    Save
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

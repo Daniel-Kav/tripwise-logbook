@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { PenTool, Eraser, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -90,6 +89,29 @@ const LogGenerator = () => {
     toast({
       title: "Printing Log",
       description: `Printing log for ${logs[currentLogIndex].date}`,
+    });
+  };
+
+  const handleLogsUpdate = (updatedLogs: any[], dayIndex: number) => {
+    // Create a copy of all logs
+    const newLogs = [...logs];
+    
+    // Update the specific day's logs
+    newLogs[dayIndex] = {
+      ...newLogs[dayIndex],
+      logs: updatedLogs
+    };
+    
+    // Update state
+    setLogs(newLogs);
+    
+    // Save to session storage
+    const logKey = `edited-logs-${dayIndex}`;
+    sessionStorage.setItem(logKey, JSON.stringify(updatedLogs));
+    
+    toast({
+      title: "Logs Updated",
+      description: "Your changes have been saved successfully",
     });
   };
 
@@ -225,6 +247,7 @@ const LogGenerator = () => {
                         logs={log.logs}
                         onPrevDay={index > 0 ? handlePrevDay : undefined}
                         onNextDay={index < logs.length - 1 ? handleNextDay : undefined}
+                        onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, index)}
                       />
                     </TabsContent>
                   ))}
@@ -240,10 +263,11 @@ const LogGenerator = () => {
                   startLocation={logs[0].startLocation}
                   endLocation={logs[0].endLocation}
                   logs={logs[0].logs}
+                  onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, 0)}
                 />
               )}
               
-              {/* Multi-day summary for longer trips */}
+              {/* Keep existing trip summary section */}
               {logs.length > 1 && (
                 <Card className="shadow-sm">
                   <CardContent className="pt-6">
