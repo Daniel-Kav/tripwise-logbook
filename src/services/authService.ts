@@ -22,6 +22,7 @@ interface SignupCredentials {
 }
 
 interface User {
+  userId: number;
   username: string;
   email: string;
   first_name: string;
