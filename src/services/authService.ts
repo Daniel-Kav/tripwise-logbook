@@ -53,6 +53,7 @@ export const authService = {
 
       const data = await response.json();
       localStorage.setItem('user', JSON.stringify(data.user));
+      console.log(data.user);
       return data.user;
     } catch (error) {
       throw new Error('Invalid credentials');
