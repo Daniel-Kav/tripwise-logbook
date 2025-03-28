@@ -45,7 +45,7 @@ export interface DailyLog {
 }
 
 // Constants for HOS regulations
-const HOS_CONSTANTS = {
+export const HOS_CONSTANTS = {
   MAX_DRIVING_HOURS: 11, // Maximum driving hours in a day
   MAX_ON_DUTY_HOURS: 14, // Maximum on-duty hours in a day
   MIN_OFF_DUTY_HOURS: 10, // Minimum off-duty hours between shifts
