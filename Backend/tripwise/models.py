@@ -10,3 +10,15 @@ class Driver(AbstractUser):
 
     def __str__(self):
         return self.username
+
+class Trip(models.Model):
+    user_id = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    daily_logs = models.JSONField()
+    notes = models.TextField(null=True, blank=True)
+    rest_stops = models.JSONField()
+    route_data = models.JSONField()
+    trip_details = models.JSONField()
+
+    def __str__(self):
+        return f"Trip {self.id} by User {self.user_id}"
