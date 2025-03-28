@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import TripPlanner from "./pages/TripPlanner";
 import LogGenerator from "./pages/LogGenerator";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
             <Route 
               path="/trip-planner" 
               element={

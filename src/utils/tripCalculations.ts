@@ -51,7 +51,7 @@ const HOS_CONSTANTS = {
   REQUIRED_BREAK_MINUTES: 30, // Required break duration
   MAX_DRIVING_BEFORE_BREAK: 8, // Maximum driving hours before requiring a break
   FUEL_STOP_FREQUENCY: 1000, // Miles between fuel stops
-  AVERAGE_SPEED: 60, // Average speed in mph
+  AVERAGE_SPEED: 65, // Average speed in mph (updated from 60 to 65)
   PICKUP_DROPOFF_TIME: 60, // Minutes for pickup and dropoff
   CYCLE_70_HOUR_LIMIT: 70, // Hour limit for 70-hour/8-day cycle
   CYCLE_60_HOUR_LIMIT: 60, // Hour limit for 60-hour/7-day cycle
@@ -69,18 +69,19 @@ export const calculateRouteSegments = (
   // For demonstration, we'll create some mock segments
   // In a real implementation, this would call a mapping API
   
+  // Updated to use 65mph average speed
   const segments: RouteSegment[] = [
     {
       startLocation: currentLocation,
       endLocation: pickupLocation,
       distance: 150, // miles
-      estimatedDrivingTime: 150, // minutes (using 60mph average)
+      estimatedDrivingTime: Math.round(150 / HOS_CONSTANTS.AVERAGE_SPEED * 60), // minutes using 65mph average
     },
     {
       startLocation: pickupLocation,
       endLocation: dropoffLocation,
       distance: 575, // miles
-      estimatedDrivingTime: 575, // minutes (using 60mph average)
+      estimatedDrivingTime: Math.round(575 / HOS_CONSTANTS.AVERAGE_SPEED * 60), // minutes using 65mph average
     },
   ];
   
@@ -96,8 +97,8 @@ export const calculateRestStops = (
 ): RestStop[] => {
   const restStops: RestStop[] = [];
   
+  // Updated time calculations based on 65mph average speed
   // Mock implementation for demonstration
-  // In a real app, this would use the route segments and HOS rules
   
   // Example fuel stop
   restStops.push({

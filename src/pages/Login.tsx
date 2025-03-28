@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,7 +77,7 @@ const Login = () => {
               <p>Password: password</p>
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button 
               type="submit" 
               className="w-full" 
@@ -85,6 +85,12 @@ const Login = () => {
             >
               {isSubmitting ? "Logging in..." : "Login"}
             </Button>
+            <div className="text-center text-sm">
+              Don't have an account?{" "}
+              <Link to="/signup" className="text-primary hover:underline font-medium">
+                Sign up
+              </Link>
+            </div>
           </CardFooter>
         </form>
       </Card>
