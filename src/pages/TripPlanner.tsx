@@ -6,78 +6,73 @@ import TripForm, { TripFormValues } from '@/components/TripForm';
 import MapView from '@/components/MapView';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  calculateRouteSegments,
-  calculateRestStops,
-  checkHOSCompliance,
-  RestStop
+  RestStop,
+  checkHOSCompliance
 } from '@/utils/tripCalculations';
 import { useNavigate } from 'react-router-dom';
+import { calculateRouteWithGemini, GeminiRouteData } from '@/services/geminiService';
+import { Button } from '@/components/ui/button';
+import { History } from 'lucide-react';
 
 const TripPlanner = () => {
   const [loading, setLoading] = useState(false);
   const [routeGenerated, setRouteGenerated] = useState(false);
   const [tripDetails, setTripDetails] = useState<TripFormValues | null>(null);
   const [restStops, setRestStops] = useState<RestStop[]>([]);
+  const [routeData, setRouteData] = useState<GeminiRouteData | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleSubmit = (values: TripFormValues) => {
+  const handleSubmit = async (values: TripFormValues) => {
     setLoading(true);
     setTripDetails(values);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      try {
-        // Calculate route segments
-        const segments = calculateRouteSegments(
-          values.currentLocation,
-          values.pickupLocation,
-          values.dropoffLocation
-        );
-        
-        // Check HOS compliance
-        const compliance = checkHOSCompliance(values, segments);
-        
-        if (!compliance.isCompliant) {
-          toast({
-            title: "HOS Compliance Warning",
-            description: compliance.violations[0],
-            variant: "destructive"
-          });
-        }
-        
-        // Calculate rest stops
-        const calculatedRestStops = calculateRestStops(
-          segments,
-          parseInt(values.availableDrivingHours)
-        );
-        
-        setRestStops(calculatedRestStops);
-        setRouteGenerated(true);
-        
+    try {
+      // Use Gemini for route calculations
+      const geminiData = await calculateRouteWithGemini(values);
+      
+      // Update state with Gemini's response
+      setRouteData(geminiData);
+      setRestStops(geminiData.restStops);
+      setRouteGenerated(true);
+      
+      // Check HOS compliance
+      if (!geminiData.hosCompliant && geminiData.violations.length > 0) {
+        toast({
+          title: "HOS Compliance Warning",
+          description: geminiData.violations[0],
+          variant: "destructive"
+        });
+      } else {
         toast({
           title: "Route Generated",
           description: "Your HOS-compliant route has been calculated.",
         });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to calculate route. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
       }
-    }, 1500);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to calculate route. Please try again.",
+        variant: "destructive"
+      });
+      console.error('Error calculating route:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGenerateLogs = () => {
-    // Store trip details in session storage to use in log generator
-    if (tripDetails) {
+    // Store trip details and route data in session storage to use in log generator
+    if (tripDetails && routeData) {
       sessionStorage.setItem('tripDetails', JSON.stringify(tripDetails));
+      sessionStorage.setItem('routeData', JSON.stringify(routeData));
       sessionStorage.setItem('restStops', JSON.stringify(restStops));
       navigate('/log-generator');
     }
+  };
+
+  const handleViewHistory = () => {
+    navigate('/trip-history');
   };
 
   return (
@@ -86,10 +81,20 @@ const TripPlanner = () => {
       
       <main className="flex-1 pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Plan Your Trip
-            </h1>
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+                Plan Your Trip
+              </h1>
+              <Button 
+                variant="outline" 
+                onClick={handleViewHistory}
+                className="flex items-center gap-2"
+              >
+                <History size={16} />
+                Trip History
+              </Button>
+            </div>
             <p className="text-xl text-gray-600">
               Generate an intelligent, HOS-compliant route with suggested rest stops.
             </p>
@@ -99,24 +104,25 @@ const TripPlanner = () => {
             <div>
               <TripForm onSubmit={handleSubmit} isLoading={loading} />
               
-              {routeGenerated && (
+              {routeGenerated && routeData && (
                 <div className="mt-6 p-4 bg-primary/10 rounded-lg border border-primary/20">
                   <h3 className="font-medium text-gray-900 mb-2">Trip Notes</h3>
                   <ul className="text-sm text-gray-600 space-y-2">
-                    <li>• This route includes {restStops.length} required stops.</li>
-                    <li>• Mandatory 30-minute break after 8 hours of driving.</li>
+                    <li>• Total distance: {routeData.totalDistance} miles</li>
+                    <li>• Estimated driving time: {(routeData.totalDrivingTime / 60).toFixed(1)} hours</li>
+                    <li>• Required stops: {restStops.length}</li>
+                    <li>• Trip days: {routeData.multiDayTrip ? 2 : 1}</li>
                     {restStops.some(stop => stop.type === 'rest') && (
                       <li>• 10-hour rest period required due to trip length.</li>
                     )}
                     <li>• All driving segments comply with 11-hour driving limit.</li>
-                    <li>• Trip is planned for property-carrying CMV driver.</li>
                   </ul>
                 </div>
               )}
             </div>
             
             <div>
-              {routeGenerated && tripDetails ? (
+              {routeGenerated && tripDetails && routeData ? (
                 <MapView 
                   startLocation={tripDetails.currentLocation}
                   endLocation={tripDetails.dropoffLocation}

@@ -41,17 +41,18 @@ export interface DailyLog {
   startLocation: string;
   endLocation: string;
   logs: LogEntry[];
+  totalMiles: number; // Added to track miles per day
 }
 
 // Constants for HOS regulations
-const HOS_CONSTANTS = {
+export const HOS_CONSTANTS = {
   MAX_DRIVING_HOURS: 11, // Maximum driving hours in a day
   MAX_ON_DUTY_HOURS: 14, // Maximum on-duty hours in a day
   MIN_OFF_DUTY_HOURS: 10, // Minimum off-duty hours between shifts
   REQUIRED_BREAK_MINUTES: 30, // Required break duration
   MAX_DRIVING_BEFORE_BREAK: 8, // Maximum driving hours before requiring a break
   FUEL_STOP_FREQUENCY: 1000, // Miles between fuel stops
-  AVERAGE_SPEED: 60, // Average speed in mph
+  AVERAGE_SPEED: 65, // Average speed in mph (updated from 60 to 65)
   PICKUP_DROPOFF_TIME: 60, // Minutes for pickup and dropoff
   CYCLE_70_HOUR_LIMIT: 70, // Hour limit for 70-hour/8-day cycle
   CYCLE_60_HOUR_LIMIT: 60, // Hour limit for 60-hour/7-day cycle
@@ -69,18 +70,19 @@ export const calculateRouteSegments = (
   // For demonstration, we'll create some mock segments
   // In a real implementation, this would call a mapping API
   
+  // Updated to use 65mph average speed
   const segments: RouteSegment[] = [
     {
       startLocation: currentLocation,
       endLocation: pickupLocation,
       distance: 150, // miles
-      estimatedDrivingTime: 150, // minutes (using 60mph average)
+      estimatedDrivingTime: Math.round(150 / HOS_CONSTANTS.AVERAGE_SPEED * 60), // minutes using 65mph average
     },
     {
       startLocation: pickupLocation,
       endLocation: dropoffLocation,
       distance: 575, // miles
-      estimatedDrivingTime: 575, // minutes (using 60mph average)
+      estimatedDrivingTime: Math.round(575 / HOS_CONSTANTS.AVERAGE_SPEED * 60), // minutes using 65mph average
     },
   ];
   
@@ -96,8 +98,8 @@ export const calculateRestStops = (
 ): RestStop[] => {
   const restStops: RestStop[] = [];
   
+  // Updated time calculations based on 65mph average speed
   // Mock implementation for demonstration
-  // In a real app, this would use the route segments and HOS rules
   
   // Example fuel stop
   restStops.push({
@@ -157,17 +159,37 @@ export const generateELDLogs = (
   restStops: RestStop[]
 ): DailyLog[] => {
   const dailyLogs: DailyLog[] = [];
+  const totalTripDistance = getTotalDistance(segments);
   
-  // Mock implementation for demonstration
-  // In a real app, this would generate detailed logs based on the route and HOS rules
+  // Calculate how to distribute miles across days
+  const multiDayTrip = getTotalDrivingTime(segments) > HOS_CONSTANTS.MAX_DRIVING_HOURS * 60;
+  
+  // For multi-day trip, split mileage appropriately between days
+  // First day includes distance from current location to pickup and partial distance to dropoff
+  // Second day includes remaining distance to dropoff
+  let day1Miles = 0;
+  let day2Miles = 0;
+  
+  if (multiDayTrip) {
+    // First segment is current location to pickup
+    day1Miles = segments[0].distance; // 150 miles from current to pickup
+    
+    // Add portion of second segment up to rest point (approximately 3/4 of the second segment)
+    const secondSegmentPortion = Math.round(segments[1].distance * 0.75); // ~430 miles 
+    day1Miles += secondSegmentPortion;
+    
+    // Second day is remainder of trip
+    day2Miles = totalTripDistance - day1Miles; // ~145 miles
+  } else {
+    day1Miles = totalTripDistance; // All miles on day 1 for single-day trip
+  }
   
   // Example log for day 1
   dailyLogs.push({
     date: "2023-06-15",
     startLocation: tripDetails.currentLocation,
-    endLocation: restStops.length > 0 && restStops[restStops.length - 1].type === 'rest'
-      ? restStops[restStops.length - 1].location
-      : tripDetails.dropoffLocation,
+    endLocation: multiDayTrip ? restStops[restStops.length - 1].location : tripDetails.dropoffLocation,
+    totalMiles: day1Miles,
     logs: [
       {
         startTime: "00:00",
@@ -236,11 +258,12 @@ export const generateELDLogs = (
   });
   
   // If the trip requires more than one day, add a second day
-  if (getTotalDrivingTime(segments) > HOS_CONSTANTS.MAX_DRIVING_HOURS * 60) {
+  if (multiDayTrip) {
     dailyLogs.push({
       date: "2023-06-16",
       startLocation: restStops[2].location,
       endLocation: tripDetails.dropoffLocation,
+      totalMiles: day2Miles,
       logs: [
         {
           startTime: "00:00",

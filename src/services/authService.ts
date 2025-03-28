@@ -15,6 +15,12 @@ interface RegisterData extends LoginCredentials {
   password2: string;
 }
 
+interface SignupCredentials {
+  username: string;
+  email: string;
+  password: string;
+}
+
 interface User {
   username: string;
   email: string;
@@ -74,6 +80,29 @@ export const authService = {
     } catch (error) {
       throw new Error('Registration failed');
     }
+  },
+  
+  // Sign up user
+  signup: async (credentials: SignupCredentials): Promise<User> => {
+    // In a real implementation, this would make an actual fetch request to Django
+    console.log("Attempting signup with:", credentials);
+    
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Simulate successful registration
+    const user: User = {
+      id: Math.floor(Math.random() * 1000) + 2, // Random ID
+      username: credentials.username,
+      email: credentials.email,
+      token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiR7aWR9LCJ1c2VybmFtZSI6IiR7Y3JlZGVudGlhbHMudXNlcm5hbWV9In0.fake_token`
+    };
+    
+    // Store token in localStorage - similar to how you'd store a Django-issued JWT token
+    localStorage.setItem("auth_token", user.token);
+    localStorage.setItem("user", JSON.stringify(user));
+    
+    return user;
   },
   
   // Logout user

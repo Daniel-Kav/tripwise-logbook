@@ -9,7 +9,9 @@ import PrivateRoute from "./components/PrivateRoute";
 import Index from "./pages/Index";
 import TripPlanner from "./pages/TripPlanner";
 import LogGenerator from "./pages/LogGenerator";
+import TripHistory from "./pages/TripHistory";
 import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
             <Route 
               path="/trip-planner" 
               element={
@@ -37,6 +40,14 @@ const App = () => (
               element={
                 <PrivateRoute>
                   <LogGenerator />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/trip-history" 
+              element={
+                <PrivateRoute>
+                  <TripHistory />
                 </PrivateRoute>
               } 
             />

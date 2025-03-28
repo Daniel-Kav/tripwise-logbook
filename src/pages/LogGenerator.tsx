@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import LogSheet from '@/components/LogSheet';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, ArrowLeft, Download, FileText, Clock, Calendar, Printer } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Download, FileText, Clock, Calendar, Printer, Save, History } from 'lucide-react';
 import { 
   DailyLog,
   TripDetails,
@@ -17,32 +18,40 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { GeminiRouteData } from '@/services/geminiService';
+import { tripHistoryService } from '@/services/tripHistoryService';
 
 const LogGenerator = () => {
   const navigate = useNavigate();
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [tripData, setTripData] = useState<{
     tripDetails: TripDetails | null;
     restStops: RestStop[] | null;
+    routeData: GeminiRouteData | null;
   }>({
     tripDetails: null,
-    restStops: null
+    restStops: null,
+    routeData: null
   });
 
   useEffect(() => {
     // Try to get trip details from session storage
     const storedTripDetails = sessionStorage.getItem('tripDetails');
     const storedRestStops = sessionStorage.getItem('restStops');
+    const storedRouteData = sessionStorage.getItem('routeData');
     
     if (storedTripDetails && storedRestStops) {
       const tripDetails = JSON.parse(storedTripDetails);
       const restStops = JSON.parse(storedRestStops);
+      const routeData = storedRouteData ? JSON.parse(storedRouteData) : null;
       
       setTripData({
         tripDetails,
-        restStops
+        restStops,
+        routeData
       });
       
       // Generate logs based on the stored trip details
@@ -74,6 +83,66 @@ const LogGenerator = () => {
 
   const handleBackToPlanner = () => {
     navigate('/trip-planner');
+  };
+
+  const handleSaveTrip = async () => {
+    if (!tripData.tripDetails || !tripData.restStops || !logs.length) {
+      toast({
+        title: "Cannot Save Trip",
+        description: "Trip data is incomplete or missing.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      
+      // Create a complete GeminiRouteData object
+      const completeRouteData: GeminiRouteData = tripData.routeData || {
+        totalDistance: 0,
+        totalDrivingTime: 0,
+        multiDayTrip: logs.length > 1,
+        hosCompliant: true,
+        violations: [],
+        restStops: tripData.restStops,
+        // Add the missing required properties
+        segments: calculateRouteSegments(
+          tripData.tripDetails.currentLocation,
+          tripData.tripDetails.pickupLocation,
+          tripData.tripDetails.dropoffLocation
+        ),
+        dailyMiles: logs.map(log => log.totalMiles)
+      };
+      
+      await tripHistoryService.saveTrip(
+        tripData.tripDetails,
+        completeRouteData,
+        tripData.restStops,
+        logs
+      );
+      
+      toast({
+        title: "Trip Saved",
+        description: "Your trip and ELD logs have been saved successfully.",
+      });
+      
+      // Navigate to history page
+      navigate('/trip-history');
+    } catch (error) {
+      console.error('Error saving trip:', error);
+      toast({
+        title: "Save Failed",
+        description: "There was an error saving your trip data.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleViewHistory = () => {
+    navigate('/trip-history');
   };
 
   const handleDownloadAllLogs = () => {
@@ -131,7 +200,7 @@ const LogGenerator = () => {
               </p>
             </div>
             
-            <div className="flex mt-4 md:mt-0 space-x-3">
+            <div className="flex mt-4 md:mt-0 space-x-3 flex-wrap gap-2">
               <Button 
                 variant="outline" 
                 className="py-2 h-10"
@@ -139,6 +208,15 @@ const LogGenerator = () => {
               >
                 <ArrowLeft size={16} className="mr-2" />
                 Back to Planner
+              </Button>
+              
+              <Button 
+                variant="outline"
+                className="py-2 h-10"
+                onClick={handleViewHistory}
+              >
+                <History size={16} className="mr-2" />
+                Trip History
               </Button>
               
               {logs.length > 0 && (
@@ -152,11 +230,20 @@ const LogGenerator = () => {
                     Print Current
                   </Button>
                   <Button 
+                    variant="outline"
                     className="py-2 h-10"
                     onClick={handleDownloadAllLogs}
                   >
                     <Download size={16} className="mr-2" />
-                    Download All
+                    Download PDF
+                  </Button>
+                  <Button 
+                    className="py-2 h-10"
+                    onClick={handleSaveTrip}
+                    disabled={saving}
+                  >
+                    <Save size={16} className="mr-2" />
+                    {saving ? "Saving..." : "Save Trip"}
                   </Button>
                 </>
               )}
@@ -320,7 +407,7 @@ const LogGenerator = () => {
                                 <td className="border border-gray-300 px-4 py-2">{drivingHours.toFixed(1)}</td>
                                 <td className="border border-gray-300 px-4 py-2">{onDutyHours.toFixed(1)}</td>
                                 <td className="border border-gray-300 px-4 py-2">
-                                  {index === 0 ? "150" : "125"}
+                                  {log.totalMiles}
                                 </td>
                               </tr>
                             );
@@ -350,7 +437,9 @@ const LogGenerator = () => {
                                   }, 0);
                               }, 0).toFixed(1)}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2">275</td>
+                            <td className="border border-gray-300 px-4 py-2">
+                              {logs.reduce((total, log) => total + log.totalMiles, 0)}
+                            </td>
                           </tr>
                         </tbody>
                       </table>
