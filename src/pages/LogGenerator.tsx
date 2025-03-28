@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -97,16 +98,26 @@ const LogGenerator = () => {
     try {
       setSaving(true);
       
+      // Create a complete GeminiRouteData object
+      const completeRouteData: GeminiRouteData = tripData.routeData || {
+        totalDistance: 0,
+        totalDrivingTime: 0,
+        multiDayTrip: logs.length > 1,
+        hosCompliant: true,
+        violations: [],
+        restStops: tripData.restStops,
+        // Add the missing required properties
+        segments: calculateRouteSegments(
+          tripData.tripDetails.currentLocation,
+          tripData.tripDetails.pickupLocation,
+          tripData.tripDetails.dropoffLocation
+        ),
+        dailyMiles: logs.map(log => log.totalMiles)
+      };
+      
       await tripHistoryService.saveTrip(
         tripData.tripDetails,
-        tripData.routeData || {
-          totalDistance: 0,
-          totalDrivingTime: 0,
-          multiDayTrip: logs.length > 1,
-          hosCompliant: true,
-          violations: [],
-          restStops: tripData.restStops
-        },
+        completeRouteData,
         tripData.restStops,
         logs
       );
