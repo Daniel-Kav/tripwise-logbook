@@ -320,7 +320,7 @@ const LogGenerator = () => {
                                 <td className="border border-gray-300 px-4 py-2">{drivingHours.toFixed(1)}</td>
                                 <td className="border border-gray-300 px-4 py-2">{onDutyHours.toFixed(1)}</td>
                                 <td className="border border-gray-300 px-4 py-2">
-                                  {index === 0 ? "150" : "125"}
+                                  {log.totalMiles}
                                 </td>
                               </tr>
                             );
@@ -350,7 +350,9 @@ const LogGenerator = () => {
                                   }, 0);
                               }, 0).toFixed(1)}
                             </td>
-                            <td className="border border-gray-300 px-4 py-2">275</td>
+                            <td className="border border-gray-300 px-4 py-2">
+                              {logs.reduce((total, log) => total + log.totalMiles, 0)}
+                            </td>
                           </tr>
                         </tbody>
                       </table>
