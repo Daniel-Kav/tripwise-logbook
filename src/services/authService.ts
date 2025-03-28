@@ -84,25 +84,26 @@ export const authService = {
   
   // Sign up user
   signup: async (credentials: SignupCredentials): Promise<User> => {
-    // In a real implementation, this would make an actual fetch request to Django
-    console.log("Attempting signup with:", credentials);
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simulate successful registration
-    const user: User = {
-      id: Math.floor(Math.random() * 1000) + 2, // Random ID
-      username: credentials.username,
-      email: credentials.email,
-      token: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiR7aWR9LCJ1c2VybmFtZSI6IiR7Y3JlZGVudGlhbHMudXNlcm5hbWV9In0.fake_token`
-    };
-    
-    // Store token in localStorage - similar to how you'd store a Django-issued JWT token
-    localStorage.setItem("auth_token", user.token);
-    localStorage.setItem("user", JSON.stringify(user));
-    
-    return user;
+    try {
+      const response = await fetch(`${API_URL}/auth/register/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        throw new Error('Signup failed');
+      }
+
+      const user: User = await response.json();
+      return user;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   },
   
   // Logout user
