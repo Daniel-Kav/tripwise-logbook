@@ -42,7 +42,7 @@ export const tripHistoryService = {
     
     const newTrip: SavedTrip = {
       id,
-      userId,
+      userId: String(userId), // Convert userId to string explicitly
       tripDetails,
       routeData,
       restStops,
