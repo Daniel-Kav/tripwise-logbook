@@ -15,6 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -65,6 +66,29 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     }
   };
 
+  const signup = async (username: string, email: string, password: string) => {
+    try {
+      setIsLoading(true);
+      // Call the signup method from authService
+      const newUser = await authService.signup({ username, email, password });
+      setUser(newUser);
+      toast({
+        title: "Registration Successful",
+        description: `Welcome, ${newUser.username}!`,
+      });
+    } catch (error) {
+      console.error("Signup failed:", error);
+      toast({
+        title: "Registration Failed",
+        description: "There was an error creating your account",
+        variant: "destructive",
+      });
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -80,6 +104,7 @@ export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       isAuthenticated: !!user,
       isLoading,
       login,
+      signup,
       logout
     }}>
       {children}
