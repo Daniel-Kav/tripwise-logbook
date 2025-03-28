@@ -71,3 +71,23 @@ class TripSavingView(APIView):
             trip_details=data['tripDetails']
         )
         return Response({'message': 'Trip saved successfully', 'tripId': trip.id}, status=status.HTTP_201_CREATED)
+
+# User Trips View
+class UserTripsView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to view trips
+
+    def get(self, request, user_id):
+        trips = Trip.objects.filter(driver__id=user_id)
+        trip_data = [
+            {
+                'id': trip.id,
+                'created_at': trip.created_at,
+                'daily_logs': trip.daily_logs,
+                'notes': trip.notes,
+                'rest_stops': trip.rest_stops,
+                'route_data': trip.route_data,
+                'trip_details': trip.trip_details,
+            }
+            for trip in trips
+        ]
+        return Response(trip_data, status=status.HTTP_200_OK)
