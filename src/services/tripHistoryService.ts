@@ -1,4 +1,3 @@
-
 // This file manages saving and retrieving trip history data
 
 import { authService } from "./authService";
@@ -23,48 +22,52 @@ const tripsStorage: Record<string, SavedTrip[]> = {};
 
 export const tripHistoryService = {
   // Save a trip and its logs
-  saveTrip: async (
+  saveTrip: (
     tripDetails: TripFormValues,
     routeData: GeminiRouteData,
     restStops: RestStop[],
     dailyLogs: DailyLog[],
     notes?: string
   ): Promise<SavedTrip> => {
-    // Check if user is authenticated
-    if (!authService.isAuthenticated()) {
-      throw new Error("User must be authenticated to save trips");
-    }
+    return new Promise(async (resolve, reject) => {
+      if (!authService.isAuthenticated()) {
+        reject(new Error("User must be authenticated to save trips"));
+      }
 
-    const userId = authService.getCurrentUser()?.userId || 'demo-user';
-    
-    // Create a unique ID
-    const id = `trip-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    
-    const newTrip: SavedTrip = {
-      id,
-      userId: String(userId), // Convert userId to string explicitly
-      tripDetails,
-      routeData,
-      restStops,
-      dailyLogs,
-      createdAt: new Date().toISOString(),
-      notes
-    };
-    
-    // Initialize user's trips array if it doesn't exist
-    if (!tripsStorage[userId]) {
-      tripsStorage[userId] = [];
-    }
-    
-    // Add to in-memory storage (would be a database in production)
-    tripsStorage[userId].push(newTrip);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log('Trip saved:', newTrip);
-    
-    return newTrip;
+      const userId = authService.getCurrentUser()?.userId || 'demo-user';
+      const id = `trip-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      const newTrip = {
+        id,
+        userId,
+        tripDetails,
+        routeData,
+        restStops,
+        dailyLogs,
+        createdAt: new Date().toISOString(),
+        notes
+      };
+
+      // Send the trip data to the backend API
+      try {
+        const response = await fetch(`http://localhost:8000/api/trip/save/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(newTrip),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save trip');
+        }
+
+        const savedTrip = await response.json();
+        resolve(savedTrip);
+      } catch (error) {
+        reject(error);
+      }
+    });
   },
   
   // Get all trips for the current user
@@ -75,12 +78,25 @@ export const tripHistoryService = {
     }
 
     const userId = authService.getCurrentUser()?.userId || 'demo-user';
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Return user's trips or empty array if none found
-    return tripsStorage[userId] || [];
+
+    // Send a request to the backend to retrieve user trips
+    try {
+        const response = await fetch(`http://localhost:8000/api/trip/user/${userId}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch user trips');
+        }
+
+        const trips: SavedTrip[] = await response.json();
+        return trips;
+    } catch (error) {
+        throw error;
+    }
   },
   
   // Get a specific trip by ID
