@@ -11,6 +11,8 @@ import {
 } from '@/utils/tripCalculations';
 import { useNavigate } from 'react-router-dom';
 import { calculateRouteWithGemini, GeminiRouteData } from '@/services/geminiService';
+import { Button } from '@/components/ui/button';
+import { History } from 'lucide-react';
 
 const TripPlanner = () => {
   const [loading, setLoading] = useState(false);
@@ -69,16 +71,30 @@ const TripPlanner = () => {
     }
   };
 
+  const handleViewHistory = () => {
+    navigate('/trip-history');
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
       <main className="flex-1 pt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Plan Your Trip
-            </h1>
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <div className="flex justify-between items-center">
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+                Plan Your Trip
+              </h1>
+              <Button 
+                variant="outline" 
+                onClick={handleViewHistory}
+                className="flex items-center gap-2"
+              >
+                <History size={16} />
+                Trip History
+              </Button>
+            </div>
             <p className="text-xl text-gray-600">
               Generate an intelligent, HOS-compliant route with suggested rest stops.
             </p>
