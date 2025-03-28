@@ -6,6 +6,7 @@ from django.contrib.auth import authenticate, login
 from rest_framework.permissions import AllowAny
 from .serializers import DriverRegistrationSerializer, DriverLoginSerializer
 from django.contrib.auth import get_user_model
+from .models import Trip  # Import the Trip model
 
 User = get_user_model()
 
@@ -43,6 +44,7 @@ class DriverLoginView(APIView):
                 return Response({
                     'message': 'Login successful',
                     'user': {
+                        'id': user.id,
                         'username': user.username,
                         'email': user.email
                     }
@@ -51,3 +53,21 @@ class DriverLoginView(APIView):
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# Trip Saving View
+class TripSavingView(APIView):
+    permission_classes = [AllowAny]  # Allow anyone to save trips
+
+    def post(self, request):
+        data = request.data
+        # Assuming data structure is validated, you can add validation logic here
+        trip = Trip.objects.create(
+            user_id=data['userId'],
+            created_at=data['createdAt'],
+            daily_logs=data['dailyLogs'],
+            notes=data.get('notes', None),
+            rest_stops=data['restStops'],
+            route_data=data['routeData'],
+            trip_details=data['tripDetails']
+        )
+        return Response({'message': 'Trip saved successfully', 'tripId': trip.id}, status=status.HTTP_201_CREATED)
