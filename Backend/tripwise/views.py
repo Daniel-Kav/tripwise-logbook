@@ -77,7 +77,7 @@ class UserTripsView(APIView):
     permission_classes = [AllowAny]  # Allow anyone to view trips
 
     def get(self, request, user_id):
-        trips = Trip.objects.filter(driver__id=user_id)
+        trips = Trip.objects.filter(user_id=user_id)
         trip_data = [
             {
                 'id': trip.id,
