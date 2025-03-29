@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -94,14 +93,33 @@ const TripHistory = () => {
   };
 
   const handleViewEldLogs = (trip: SavedTrip) => {
-    // Store trip data in session storage for the log generator
-    sessionStorage.setItem('tripDetails', JSON.stringify(trip.tripDetails));
-    sessionStorage.setItem('routeData', JSON.stringify(trip.routeData));
-    sessionStorage.setItem('restStops', JSON.stringify(trip.restStops));
-    sessionStorage.setItem('savedLogs', JSON.stringify(trip.dailyLogs));
-    
-    // Navigate to log generator
-    navigate('/log-generator');
+    try {
+      // Validate required data
+      if (!trip.trip_details || !trip.route_data || !trip.rest_stops) {
+        toast({
+          title: "Missing Trip Data",
+          description: "Some required trip information is missing. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Store trip data in session storage
+      sessionStorage.setItem('tripDetails', JSON.stringify(trip.trip_details));
+      sessionStorage.setItem('routeData', JSON.stringify(trip.route_data));
+      sessionStorage.setItem('restStops', JSON.stringify(trip.rest_stops));
+      sessionStorage.setItem('savedLogs', JSON.stringify(trip.daily_logs));
+      
+      // Navigate to log generator
+      navigate('/log-generator');
+    } catch (error) {
+      console.error('Error preparing ELD logs:', error);
+      toast({
+        title: "Error",
+        description: "There was an error preparing your ELD logs. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -196,17 +214,64 @@ const TripHistory = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm">
-                              {trip.tripDetails.currentLocation} → {trip.tripDetails.dropoffLocation}
+                              {trip.trip_details ? `${trip.trip_details.currentLocation} → ${trip.trip_details.dropoffLocation}` : 'Location not available'}
                             </div>
                             <div className="text-xs text-gray-500 mt-1 flex items-center">
                               <Calendar size={12} className="mr-1" />
-                              {formatDate(trip.createdAt)}
+                              {formatDate(trip.created_at)}
                               <span className="mx-1">•</span>
-                              {trip.dailyLogs.length} {trip.dailyLogs.length === 1 ? 'day' : 'days'}
+                              {trip.daily_logs && trip.daily_logs.length} {trip.daily_logs && trip.daily_logs.length === 1 ? 'day' : 'days'}
                             </div>
+                            {selectedTrip?.id === trip.id && (
+                              <div className="mt-2 space-y-2">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <MapPin size={12} className="text-gray-400" />
+                                  <span className="text-gray-600">
+                                    {trip.route_data?.totalDistance || 0} miles
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <Clock size={12} className="text-gray-400" />
+                                  <span className="text-gray-600">
+                                    {((trip.route_data?.totalDrivingTime || 0) / 60).toFixed(1)} hours driving
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs">
+                                  <FileText size={12} className="text-gray-400" />
+                                  <span className="text-gray-600">
+                                    {trip.rest_stops.length} rest stops
+                                  </span>
+                                </div>
+                                <div className="pt-2 flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewEldLogs(trip);
+                                    }}
+                                  >
+                                    <FileText size={12} className="mr-1" />
+                                    View ELD Logs
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTrip(trip.id);
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <Badge variant="outline" className="whitespace-nowrap">
-                            {trip.routeData?.totalDistance || 0} miles
+                            {trip.route_data?.totalDistance || 0} miles
                           </Badge>
                         </div>
                       ))}
@@ -222,10 +287,10 @@ const TripHistory = () => {
                       <div className="flex items-start justify-between">
                         <div>
                           <CardTitle className="text-xl">
-                            {selectedTrip.tripDetails.currentLocation} to {selectedTrip.tripDetails.dropoffLocation}
+                            {selectedTrip.trip_details.currentLocation} to {selectedTrip.trip_details.dropoffLocation}
                           </CardTitle>
                           <CardDescription className="mt-1">
-                            Created on {formatDate(selectedTrip.createdAt)} at {formatTime(selectedTrip.createdAt)}
+                            Created on {formatDate(selectedTrip.created_at)} at {formatTime(selectedTrip.created_at)}
                           </CardDescription>
                         </div>
                         <div>
@@ -259,30 +324,30 @@ const TripHistory = () => {
                               <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Starting Point:</span>
-                                  <span className="font-medium">{selectedTrip.tripDetails.currentLocation}</span>
+                                  <span className="font-medium">{selectedTrip.trip_details.currentLocation}</span>
                                 </div>
-                                {selectedTrip.tripDetails.pickupLocation && (
+                                {selectedTrip.trip_details.pickupLocation && (
                                   <div className="flex justify-between">
                                     <span className="text-gray-600">Pickup:</span>
-                                    <span className="font-medium">{selectedTrip.tripDetails.pickupLocation}</span>
+                                    <span className="font-medium">{selectedTrip.trip_details.pickupLocation}</span>
                                   </div>
                                 )}
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Destination:</span>
-                                  <span className="font-medium">{selectedTrip.tripDetails.dropoffLocation}</span>
+                                  <span className="font-medium">{selectedTrip.trip_details.dropoffLocation}</span>
                                 </div>
                                 <Separator />
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Total Distance:</span>
-                                  <span className="font-medium">{selectedTrip.routeData?.totalDistance || 0} miles</span>
+                                  <span className="font-medium">{selectedTrip.route_data?.totalDistance || 0} miles</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Driving Time:</span>
-                                  <span className="font-medium">{((selectedTrip.routeData?.totalDrivingTime || 0) / 60).toFixed(1)} hours</span>
+                                  <span className="font-medium">{((selectedTrip.route_data?.totalDrivingTime || 0) / 60).toFixed(1)} hours</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Trip Duration:</span>
-                                  <span className="font-medium">{selectedTrip.dailyLogs.length} {selectedTrip.dailyLogs.length === 1 ? 'day' : 'days'}</span>
+                                  <span className="font-medium">{selectedTrip.daily_logs.length} {selectedTrip.daily_logs.length === 1 ? 'day' : 'days'}</span>
                                 </div>
                               </div>
                             </div>
@@ -295,18 +360,18 @@ const TripHistory = () => {
                               <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">HOS Compliant:</span>
-                                  <Badge variant={selectedTrip.routeData?.hosCompliant ? "outline" : "destructive"}>
-                                    {selectedTrip.routeData?.hosCompliant ? "Yes" : "No"}
+                                  <Badge variant={selectedTrip.route_data?.hosCompliant ? "outline" : "destructive"}>
+                                    {selectedTrip.route_data?.hosCompliant ? "Yes" : "No"}
                                   </Badge>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Rest Stops:</span>
-                                  <span className="font-medium">{selectedTrip.restStops.length}</span>
+                                  <span className="font-medium">{selectedTrip.rest_stops.length}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Total Driving:</span>
                                   <span className="font-medium">
-                                    {selectedTrip.dailyLogs.reduce((total, log) => {
+                                    {selectedTrip.daily_logs.reduce((total, log) => {
                                       return total + log.logs
                                         .filter(entry => entry.status === 'driving')
                                         .reduce((sum, entry) => {
@@ -320,7 +385,7 @@ const TripHistory = () => {
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Total On-Duty:</span>
                                   <span className="font-medium">
-                                    {selectedTrip.dailyLogs.reduce((total, log) => {
+                                    {selectedTrip.daily_logs.reduce((total, log) => {
                                       return total + log.logs
                                         .filter(entry => entry.status === 'on-duty')
                                         .reduce((sum, entry) => {
@@ -344,11 +409,11 @@ const TripHistory = () => {
                             </div>
                           </div>
                           
-                          {selectedTrip.routeData?.violations && selectedTrip.routeData.violations.length > 0 && (
+                          {selectedTrip.route_data?.violations && selectedTrip.route_data.violations.length > 0 && (
                             <div className="bg-red-50 rounded-lg p-4 border border-red-200 mt-4">
                               <h3 className="font-medium text-red-700 mb-2">HOS Violations</h3>
                               <ul className="list-disc pl-5 space-y-1 text-sm text-red-700">
-                                {selectedTrip.routeData.violations.map((violation, index) => (
+                                {selectedTrip.route_data.violations.map((violation, index) => (
                                   <li key={index}>{violation}</li>
                                 ))}
                               </ul>
@@ -370,7 +435,7 @@ const TripHistory = () => {
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
-                                {selectedTrip.dailyLogs.map((log, index) => {
+                                {selectedTrip.daily_logs.map((log, index) => {
                                   const logDate = new Date(log.date);
                                   const formattedDate = logDate.toLocaleDateString('en-US', { 
                                     month: 'short', 
@@ -409,7 +474,7 @@ const TripHistory = () => {
                                 <TableRow className="font-medium">
                                   <TableCell colSpan={3}>Totals</TableCell>
                                   <TableCell>
-                                    {selectedTrip.dailyLogs.reduce((total, log) => {
+                                    {selectedTrip.daily_logs.reduce((total, log) => {
                                       return total + log.logs
                                         .filter(entry => entry.status === 'driving')
                                         .reduce((sum, entry) => {
@@ -420,7 +485,7 @@ const TripHistory = () => {
                                     }, 0).toFixed(1)}
                                   </TableCell>
                                   <TableCell>
-                                    {selectedTrip.dailyLogs.reduce((total, log) => {
+                                    {selectedTrip.daily_logs.reduce((total, log) => {
                                       return total + log.logs
                                         .filter(entry => entry.status === 'on-duty')
                                         .reduce((sum, entry) => {
@@ -431,7 +496,7 @@ const TripHistory = () => {
                                     }, 0).toFixed(1)}
                                   </TableCell>
                                   <TableCell>
-                                    {selectedTrip.dailyLogs.reduce((total, log) => total + log.totalMiles, 0)}
+                                    {selectedTrip.daily_logs.reduce((total, log) => total + log.totalMiles, 0)}
                                   </TableCell>
                                 </TableRow>
                               </TableBody>
@@ -440,7 +505,7 @@ const TripHistory = () => {
                         </TabsContent>
                         
                         <TabsContent value="stops">
-                          {selectedTrip.restStops.length > 0 ? (
+                          {selectedTrip.rest_stops.length > 0 ? (
                             <div className="rounded-lg border">
                               <Table>
                                 <TableHeader>
@@ -453,7 +518,7 @@ const TripHistory = () => {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {selectedTrip.restStops.map((stop, index) => (
+                                  {selectedTrip.rest_stops.map((stop, index) => (
                                     <TableRow key={index}>
                                       <TableCell>{index + 1}</TableCell>
                                       <TableCell>{stop.location}</TableCell>
@@ -462,12 +527,8 @@ const TripHistory = () => {
                                           {stop.type === 'rest' ? 'Rest Break (10h)' : 'Short Break (30m)'}
                                         </Badge>
                                       </TableCell>
-                                      <TableCell>{stop.type === 'rest' ? '10 hours' : '30 minutes'}</TableCell>
-                                      <TableCell>
-                                        {stop.type === 'rest' 
-                                          ? 'Required 10-hour rest period'
-                                          : '30-minute break after 8 hours of driving'}
-                                      </TableCell>
+                                      <TableCell>{stop.duration}</TableCell>
+                                      <TableCell>{stop.stopReason}</TableCell>
                                     </TableRow>
                                   ))}
                                 </TableBody>
