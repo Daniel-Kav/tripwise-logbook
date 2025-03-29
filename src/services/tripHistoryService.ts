@@ -34,7 +34,7 @@ export const tripHistoryService = {
         reject(new Error("User must be authenticated to save trips"));
       }
 
-      const userId = authService.getCurrentUser()?.userId || 'demo-user';
+      const userId = authService.getCurrentUser()?.id;
       const id = `trip-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
       const newTrip = {
@@ -77,7 +77,7 @@ export const tripHistoryService = {
       throw new Error("User must be authenticated to view trips");
     }
 
-    const userId = authService.getCurrentUser()?.userId || 'demo-user';
+    const userId = authService.getCurrentUser()?.id;
 
     // Send a request to the backend to retrieve user trips
     try {
@@ -93,6 +93,7 @@ export const tripHistoryService = {
         }
 
         const trips: SavedTrip[] = await response.json();
+        console.log("Fetched trips:", trips);
         return trips;
     } catch (error) {
         throw error;
@@ -106,7 +107,7 @@ export const tripHistoryService = {
       throw new Error("User must be authenticated to view trips");
     }
 
-    const userId = authService.getCurrentUser()?.userId || 'demo-user';
+    const userId = authService.getCurrentUser()?.id;
     
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 300));
@@ -124,7 +125,7 @@ export const tripHistoryService = {
       throw new Error("User must be authenticated to delete trips");
     }
 
-    const userId = authService.getCurrentUser()?.userId || 'demo-user';
+    const userId = authService.getCurrentUser()?.id ;
     
     // If user has no trips, nothing to delete
     if (!tripsStorage[userId]) {
