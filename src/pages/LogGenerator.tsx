@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/Navbar';
@@ -20,9 +19,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { GeminiRouteData } from '@/services/geminiService';
 import { tripHistoryService } from '@/services/tripHistoryService';
+import { useToast } from '@/hooks/use-toast';
 
 const LogGenerator = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -38,16 +39,38 @@ const LogGenerator = () => {
   });
 
   useEffect(() => {
-    // Try to get trip details from session storage
-    const storedTripDetails = sessionStorage.getItem('tripDetails');
-    const storedRestStops = sessionStorage.getItem('restStops');
-    const storedRouteData = sessionStorage.getItem('routeData');
-    
-    if (storedTripDetails && storedRestStops) {
-      const tripDetails = JSON.parse(storedTripDetails);
-      const restStops = JSON.parse(storedRestStops);
-      const routeData = storedRouteData ? JSON.parse(storedRouteData) : null;
+    try {
+      // Get data from session storage with null checks
+      const tripDetailsStr = sessionStorage.getItem('tripDetails');
+      const routeDataStr = sessionStorage.getItem('routeData');
+      const restStopsStr = sessionStorage.getItem('restStops');
+      const savedLogsStr = sessionStorage.getItem('savedLogs');
+
+      if (!tripDetailsStr || !routeDataStr || !restStopsStr) {
+        toast({
+          title: "Missing Data",
+          description: "Required trip data is missing. Please try viewing the logs again from your trip history.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Parse the data only if it exists
+      const tripDetails = JSON.parse(tripDetailsStr);
+      const routeData = JSON.parse(routeDataStr);
+      const restStops = JSON.parse(restStopsStr);
+      const savedLogs = savedLogsStr ? JSON.parse(savedLogsStr) : [];
       
+      // Validate parsed data
+      if (!tripDetails || !routeData || !restStops) {
+        toast({
+          title: "Invalid Data",
+          description: "The trip data is invalid or corrupted. Please try viewing the logs again from your trip history.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setTripData({
         tripDetails,
         restStops,
@@ -62,12 +85,28 @@ const LogGenerator = () => {
       );
       
       const generatedLogs = generateELDLogs(tripDetails, segments, restStops);
+      
+      if (!generatedLogs || generatedLogs.length === 0) {
+        toast({
+          title: "No Logs Generated",
+          description: "Unable to generate ELD logs for this trip. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setLogs(generatedLogs);
+    } catch (error) {
+      console.error('Error parsing trip data:', error);
+      toast({
+        title: "Error",
+        description: "There was an error loading the trip data. Please try viewing the logs again from your trip history.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    // Set loading to false after data is processed
-    setLoading(false);
-  }, []);
+  }, [toast]);
 
   const handlePrevDay = () => {
     if (currentLogIndex > 0) {
@@ -184,6 +223,50 @@ const LogGenerator = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 pt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                <FileText size={24} className="text-gray-400" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Loading Logs</h3>
+              <p className="text-gray-500">Please wait while we prepare your ELD logs.</p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!tripData.tripDetails || !tripData.routeData) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 pt-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-4">
+                <FileText size={24} className="text-red-400" />
+              </div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Missing Data</h3>
+              <p className="text-gray-500 mb-4">Required trip data is missing. Please return to the trip planner.</p>
+              <Button onClick={handleBackToPlanner}>
+                <ArrowLeft size={16} className="mr-2" />
+                Back to Trip Planner
+              </Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -250,245 +333,193 @@ const LogGenerator = () => {
             </div>
           </div>
           
-          {loading ? (
-            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100">
-              <div className="text-center py-8">
-                <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <FileText size={24} className="text-gray-400" />
-                </div>
-                <h3 className="text-xl font-medium text-gray-900 mb-3">Loading Logs</h3>
-                <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                  Please wait while we retrieve your ELD logs.
+          <div className="grid grid-cols-1 gap-6">
+            {/* Trip Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h3 className="font-medium text-gray-900 mb-2 flex items-center">
+                  <FileText size={16} className="text-blue-500 mr-2" />
+                  Trip Overview
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {tripData.tripDetails?.currentLocation} to {tripData.tripDetails?.dropoffLocation}
+                  <br />
+                  {logs.length} day trip with {tripData.restStops?.length || 0} required stops.
                 </p>
-                <div className="flex justify-center">
-                  <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                </div>
+              </div>
+              
+              <div className="col-span-2 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                <h3 className="font-medium text-gray-900 mb-2">FMCSA HOS Compliance</h3>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• 11-hour driving limit: Compliant</li>
+                  <li>• 14-hour on-duty window: Compliant</li>
+                  <li>• 30-minute break requirement: Included</li>
+                  <li>• 10-hour off-duty period: Scheduled</li>
+                  <li>• 60/70-hour limit: Within allowed limits</li>
+                </ul>
               </div>
             </div>
-          ) : logs.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {/* Trip Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <h3 className="font-medium text-gray-900 mb-2 flex items-center">
-                    <FileText size={16} className="text-blue-500 mr-2" />
-                    Trip Overview
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {tripData.tripDetails?.currentLocation} to {tripData.tripDetails?.dropoffLocation}
-                    <br />
-                    {logs.length} day trip with {tripData.restStops?.length || 0} required stops.
-                  </p>
+            
+            {/* Tabs for day selection when there are multiple logs */}
+            {logs.length > 1 && (
+              <Tabs 
+                defaultValue={`day-${currentLogIndex}`} 
+                onValueChange={(value) => setCurrentLogIndex(parseInt(value.split('-')[1]))}
+                className="w-full"
+              >
+                <div className="border-b mb-4">
+                  <TabsList className="bg-transparent space-x-4">
+                    {logs.map((log, index) => {
+                      const logDate = new Date(log.date);
+                      const formattedDate = logDate.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric'
+                      });
+                      
+                      return (
+                        <TabsTrigger 
+                          key={index} 
+                          value={`day-${index}`}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-primary`}
+                        >
+                          <Calendar className="h-4 w-4" />
+                          <span>Day {index + 1}: {formattedDate}</span>
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
                 </div>
                 
-                <div className="col-span-2 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                  <h3 className="font-medium text-gray-900 mb-2">FMCSA HOS Compliance</h3>
-                  <ul className="text-sm text-gray-600 space-y-1">
-                    <li>• 11-hour driving limit: Compliant</li>
-                    <li>• 14-hour on-duty window: Compliant</li>
-                    <li>• 30-minute break requirement: Included</li>
-                    <li>• 10-hour off-duty period: Scheduled</li>
-                    <li>• 60/70-hour limit: Within allowed limits</li>
-                  </ul>
-                </div>
-              </div>
-              
-              {/* Tabs for day selection when there are multiple logs */}
-              {logs.length > 1 && (
-                <Tabs 
-                  defaultValue={`day-${currentLogIndex}`} 
-                  onValueChange={(value) => setCurrentLogIndex(parseInt(value.split('-')[1]))}
-                  className="w-full"
-                >
-                  <div className="border-b mb-4">
-                    <TabsList className="bg-transparent space-x-4">
-                      {logs.map((log, index) => {
-                        const logDate = new Date(log.date);
-                        const formattedDate = logDate.toLocaleDateString('en-US', { 
-                          month: 'short', 
-                          day: 'numeric'
-                        });
-                        
-                        return (
-                          <TabsTrigger 
-                            key={index} 
-                            value={`day-${index}`}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-t-lg data-[state=active]:border-b-2 data-[state=active]:border-primary`}
-                          >
-                            <Calendar className="h-4 w-4" />
-                            <span>Day {index + 1}: {formattedDate}</span>
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-                  </div>
+                {logs.map((log, index) => (
+                  <TabsContent key={index} value={`day-${index}`} className="mt-0">
+                    <LogSheet
+                      date={log.date}
+                      driverName="John Doe"
+                      truckNumber="TRK-12345"
+                      startLocation={log.startLocation}
+                      endLocation={log.endLocation}
+                      logs={log.logs}
+                      onPrevDay={index > 0 ? handlePrevDay : undefined}
+                      onNextDay={index < logs.length - 1 ? handleNextDay : undefined}
+                      onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, index)}
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            )}
+            
+            {/* Single log display when there's only one log */}
+            {logs.length === 1 && (
+              <LogSheet
+                date={logs[0].date}
+                driverName={tripData.tripDetails?.driverName || "Driver"}
+                truckNumber={tripData.tripDetails?.truckNumber || "TRK-12345"}
+                startLocation={tripData.tripDetails?.currentLocation || logs[0].startLocation}
+                endLocation={tripData.tripDetails?.dropoffLocation || logs[0].endLocation}
+                logs={logs[0].logs}
+                onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, 0)}
+              />
+            )}
+            
+            {/* Keep existing trip summary section */}
+            {logs.length > 1 && (
+              <Card className="shadow-sm">
+                <CardContent className="pt-6">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center">
+                    <Clock className="mr-2 h-5 w-5 text-primary" />
+                    Trip Summary
+                  </h3>
                   
-                  {logs.map((log, index) => (
-                    <TabsContent key={index} value={`day-${index}`} className="mt-0">
-                      <LogSheet
-                        date={log.date}
-                        driverName="John Doe"
-                        truckNumber="TRK-12345"
-                        startLocation={log.startLocation}
-                        endLocation={log.endLocation}
-                        logs={log.logs}
-                        onPrevDay={index > 0 ? handlePrevDay : undefined}
-                        onNextDay={index < logs.length - 1 ? handleNextDay : undefined}
-                        onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, index)}
-                      />
-                    </TabsContent>
-                  ))}
-                </Tabs>
-              )}
-              
-              {/* Single log display when there's only one log */}
-              {logs.length === 1 && (
-                <LogSheet
-                  date={logs[0].date}
-                  driverName="John Doe"
-                  truckNumber="TRK-12345"
-                  startLocation={logs[0].startLocation}
-                  endLocation={logs[0].endLocation}
-                  logs={logs[0].logs}
-                  onLogsUpdate={(updatedLogs) => handleLogsUpdate(updatedLogs, 0)}
-                />
-              )}
-              
-              {/* Keep existing trip summary section */}
-              {logs.length > 1 && (
-                <Card className="shadow-sm">
-                  <CardContent className="pt-6">
-                    <h3 className="text-xl font-semibold mb-4 flex items-center">
-                      <Clock className="mr-2 h-5 w-5 text-primary" />
-                      Trip Summary
-                    </h3>
-                    
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="bg-gray-100">
-                            <th className="border border-gray-300 px-4 py-2 text-left">Date</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">Route</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">Driving Hours</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">On-Duty Hours</th>
-                            <th className="border border-gray-300 px-4 py-2 text-left">Miles</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {logs.map((log, index) => {
-                            const logDate = new Date(log.date);
-                            const formattedDate = logDate.toLocaleDateString('en-US', { 
-                              month: 'short', 
-                              day: 'numeric',
-                              year: 'numeric'
-                            });
-                            
-                            // Calculate hours for each status
-                            const drivingHours = log.logs
-                              .filter(entry => entry.status === 'driving')
-                              .reduce((total, entry) => {
-                                const start = new Date(`2000-01-01T${entry.startTime}`);
-                                const end = new Date(`2000-01-01T${entry.endTime}`);
-                                return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                              }, 0);
-                            
-                            const onDutyHours = log.logs
-                              .filter(entry => entry.status === 'on-duty')
-                              .reduce((total, entry) => {
-                                const start = new Date(`2000-01-01T${entry.startTime}`);
-                                const end = new Date(`2000-01-01T${entry.endTime}`);
-                                return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                              }, 0);
-                            
-                            return (
-                              <tr key={index} className="hover:bg-gray-50">
-                                <td className="border border-gray-300 px-4 py-2">{formattedDate}</td>
-                                <td className="border border-gray-300 px-4 py-2">{log.startLocation} → {log.endLocation}</td>
-                                <td className="border border-gray-300 px-4 py-2">{drivingHours.toFixed(1)}</td>
-                                <td className="border border-gray-300 px-4 py-2">{onDutyHours.toFixed(1)}</td>
-                                <td className="border border-gray-300 px-4 py-2">
-                                  {log.totalMiles}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          <tr className="bg-gray-100 font-semibold">
-                            <td className="border border-gray-300 px-4 py-2">Total</td>
-                            <td className="border border-gray-300 px-4 py-2"></td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {logs.reduce((total, log) => {
-                                return total + log.logs
-                                  .filter(entry => entry.status === 'driving')
-                                  .reduce((sum, entry) => {
-                                    const start = new Date(`2000-01-01T${entry.startTime}`);
-                                    const end = new Date(`2000-01-01T${entry.endTime}`);
-                                    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                                  }, 0);
-                              }, 0).toFixed(1)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {logs.reduce((total, log) => {
-                                return total + log.logs
-                                  .filter(entry => entry.status === 'on-duty')
-                                  .reduce((sum, entry) => {
-                                    const start = new Date(`2000-01-01T${entry.startTime}`);
-                                    const end = new Date(`2000-01-01T${entry.endTime}`);
-                                    return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-                                  }, 0);
-                              }, 0).toFixed(1)}
-                            </td>
-                            <td className="border border-gray-300 px-4 py-2">
-                              {logs.reduce((total, log) => total + log.totalMiles, 0)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          ) : (
-            <div className="p-8 bg-white rounded-xl shadow-sm border border-gray-100">
-              {tripData.tripDetails ? (
-                <div className="text-center py-8">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                    <FileText size={24} className="text-gray-400" />
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-4 py-2 text-left">Date</th>
+                          <th className="border border-gray-300 px-4 py-2 text-left">Route</th>
+                          <th className="border border-gray-300 px-4 py-2 text-left">Driving Hours</th>
+                          <th className="border border-gray-300 px-4 py-2 text-left">On-Duty Hours</th>
+                          <th className="border border-gray-300 px-4 py-2 text-left">Miles</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {logs.map((log, index) => {
+                          const logDate = new Date(log.date);
+                          const formattedDate = logDate.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          });
+                          
+                          // Calculate hours for each status
+                          const drivingHours = log.logs
+                            .filter(entry => entry.status === 'driving')
+                            .reduce((total, entry) => {
+                              const start = new Date(`2000-01-01T${entry.startTime}`);
+                              const end = new Date(`2000-01-01T${entry.endTime}`);
+                              return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                            }, 0);
+                          
+                          const onDutyHours = log.logs
+                            .filter(entry => entry.status === 'on-duty')
+                            .reduce((total, entry) => {
+                              const start = new Date(`2000-01-01T${entry.startTime}`);
+                              const end = new Date(`2000-01-01T${entry.endTime}`);
+                              return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                            }, 0);
+                          
+                          return (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="border border-gray-300 px-4 py-2">{formattedDate}</td>
+                              <td className="border border-gray-300 px-4 py-2">
+                                {index === 0 ? tripData.tripDetails?.currentLocation : tripData.tripDetails?.pickupLocation} → 
+                                {index === logs.length - 1 ? tripData.tripDetails?.dropoffLocation : tripData.tripDetails?.pickupLocation}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2">{drivingHours.toFixed(1)}</td>
+                              <td className="border border-gray-300 px-4 py-2">{onDutyHours.toFixed(1)}</td>
+                              <td className="border border-gray-300 px-4 py-2">
+                                {tripData.routeData?.dailyMiles[index] || log.totalMiles}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        <tr className="bg-gray-100 font-semibold">
+                          <td className="border border-gray-300 px-4 py-2">Total</td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {tripData.tripDetails?.currentLocation} → {tripData.tripDetails?.dropoffLocation}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {logs.reduce((total, log) => {
+                              return total + log.logs
+                                .filter(entry => entry.status === 'driving')
+                                .reduce((sum, entry) => {
+                                  const start = new Date(`2000-01-01T${entry.startTime}`);
+                                  const end = new Date(`2000-01-01T${entry.endTime}`);
+                                  return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                                }, 0);
+                            }, 0).toFixed(1)}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {logs.reduce((total, log) => {
+                              return total + log.logs
+                                .filter(entry => entry.status === 'on-duty')
+                                .reduce((sum, entry) => {
+                                  const start = new Date(`2000-01-01T${entry.startTime}`);
+                                  const end = new Date(`2000-01-01T${entry.endTime}`);
+                                  return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+                                }, 0);
+                            }, 0).toFixed(1)}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2">
+                            {tripData.routeData?.totalDistance || logs.reduce((total, log) => total + log.totalMiles, 0)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-3">Generating Logs</h3>
-                  <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                    Your ELD logs are being generated based on your trip details.
-                  </p>
-                  <div className="flex justify-center">
-                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Alert variant="destructive" className="mb-6">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>No Trip Data Available</AlertTitle>
-                    <AlertDescription>
-                      You need to plan a trip before generating ELD logs.
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                      <FileText size={24} className="text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-3">No Logs Available</h3>
-                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                      First, use the Trip Planner to create a route. Then, you can generate ELD logs based on your planned trip.
-                    </p>
-                    <Button onClick={handleBackToPlanner}>
-                      Go to Trip Planner
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </main>
       
