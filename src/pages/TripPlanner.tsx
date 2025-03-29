@@ -30,7 +30,7 @@ const TripPlanner = () => {
     try {
       // Use Gemini for route calculations
       const geminiData = await calculateRouteWithGemini(values);
-      
+      console.log(geminiData);
       // Update state with Gemini's response
       setRouteData(geminiData);
       setRestStops(geminiData.restStops);

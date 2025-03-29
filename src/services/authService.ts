@@ -22,7 +22,7 @@ interface SignupCredentials {
 }
 
 interface User {
-  userId: number;
+  id: number;
   username: string;
   email: string;
   first_name: string;
@@ -121,6 +121,7 @@ export const authService = {
   // Get current user
   getCurrentUser: (): User | null => {
     const userStr = localStorage.getItem('user');
+    console.log(`Current user: ${userStr}`);
     return userStr ? JSON.parse(userStr) : null;
   },
   
