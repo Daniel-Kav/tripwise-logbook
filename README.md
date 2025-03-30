@@ -1,69 +1,118 @@
-# Welcome to your Lovable project
+# TripWise Logbook
 
-## Project info
+A modern Electronic Logging Device (ELD) application for commercial drivers, helping manage Hours of Service (HOS) compliance and trip planning.
 
-**URL**: https://lovable.dev/projects/c3c44ae6-d2ec-4806-b853-7c1e2ee020f5
+## Features
 
-## How can I edit this code?
+### Route Planning
+- Real-time route calculation using OpenStreetMap
+- Automatic distance and time calculations
+- Required stop planning (fuel, rest breaks)
+- HOS compliance validation
+- Multi-day trip support
 
-There are several ways of editing your application.
+### ELD Log Management
+- Interactive 24-hour log grid
+- Real-time HOS compliance checking
+- Support for all duty statuses:
+  - Driving
+  - On-Duty (Not Driving)
+  - Off-Duty
+  - Sleeper Berth
+- Automatic break scheduling
+- Manual log entry and editing
 
-**Use Lovable**
+### FMCSA Compliance
+- 11-hour driving limit enforcement
+- 14-hour on-duty window tracking
+- 30-minute break requirement
+- 10-hour off-duty period
+- 60/70-hour limit monitoring
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/c3c44ae6-d2ec-4806-b853-7c1e2ee020f5) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
+- Node.js (v16 or higher)
+- npm or yarn
+- django 5.1
 
-**Use your preferred IDE**
+### Installation
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+1. Clone the repository:
+```bash
+git clone https://github.com/daniel-kav/tripwise-logbook.git
+cd tripwise-logbook
 ```
 
-**Edit a file directly in GitHub**
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
 
-**Use GitHub Codespaces**
+4. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+tripwise-logbook/
+├── src/
+│   ├── components/         # Reusable UI components
+│   ├── pages/             # Page components
+│   ├── services/          # API and external service integrations
+│   ├── utils/             # Utility functions and constants
+│   ├── contexts/          # React contexts
+│   ├── hooks/             # Custom React hooks
+│   └── types/             # TypeScript type definitions
+├── public/                # Static assets
+└── package.json
+```
 
-This project is built with .
+## Key Components
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### LogSheet
+- Interactive 24-hour log grid
+- Real-time HOS compliance checking
+- Manual entry and editing
+- Status change validation
 
-## How can I deploy this project?
+### MapView
+- Route visualization
+- Stop location mapping
+- Distance and time calculations
+- Interactive markers
 
-Simply open [Lovable](https://lovable.dev/projects/c3c44ae6-d2ec-4806-b853-7c1e2ee020f5) and click on Share -> Publish.
+### TripPlanner
+- Route planning interface
+- HOS compliance validation
+- Stop scheduling
+- Multi-day trip support
 
-## I want to use a custom domain - is that possible?
+## Contributing
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support, please:
+1. Check the documentation
+2. Open an issue
