@@ -16,9 +16,14 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 application = get_wsgi_application()
 
-# Fix the database schema on startup
+# Run migrations and fix database schema on startup
 try:
+    print("Applying migrations...")
+    call_command('migrate', '--noinput')
+    print("Migrations applied successfully")
+    
+    print("Running database schema fix command...")
     call_command('fix_driver_table')
     print("Database schema fix command executed successfully")
 except Exception as e:
-    print(f"Error running database schema fix: {e}")
+    print(f"Error during startup tasks: {e}")
