@@ -31,6 +31,9 @@ ALLOWED_HOSTS = ['tripwise-7jbg.onrender.com', 'localhost', '127.0.0.1']
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = ['https://tripwise-7jbg.onrender.com', 'http://localhost:3000', 'http://127.0.0.1:3000']
+
 # Application definition
 
 INSTALLED_APPS = [
