@@ -6,7 +6,7 @@ import { DailyLog, RestStop } from "@/utils/tripCalculations";
 import { GeminiRouteData } from "./geminiService";
 
 // API base URL - use environment variable or fallback to localhost for development
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://tripwise-7jbg.onrender.com';
 
 export interface SavedTrip {
   id: string;
