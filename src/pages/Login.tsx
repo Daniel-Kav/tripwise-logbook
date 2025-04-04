@@ -73,8 +73,8 @@ const Login = () => {
             
             <div className="text-sm text-gray-500">
               <p>Demo credentials:</p>
-              <p>Username: driver</p>
-              <p>Password: password</p>
+              <p>Username: dankav</p>
+              <p>Password: django1234</p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
