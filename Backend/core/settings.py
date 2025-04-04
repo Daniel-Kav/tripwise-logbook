@@ -32,7 +32,10 @@ CORS_ALLOW_ALL_ORIGINS = True  # Only for development
 CORS_ALLOW_CREDENTIALS = True
 
 # CSRF settings
-CSRF_TRUSTED_ORIGINS = ['https://tripwise-7jbg.onrender.com', 'http://localhost:3000', 'http://127.0.0.1:3000']
+CSRF_TRUSTED_ORIGINS = ['https://tripwise-7jbg.onrender.com', 
+'http://localhost:3000', 
+'http://127.0.0.1:3000',
+"https://tripwise-logbook.vercel.app"]
 
 # Application definition
 
