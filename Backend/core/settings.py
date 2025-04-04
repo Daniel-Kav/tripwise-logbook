@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+import dj_database_url
+from dotenv import load_dotenv
+
+# Load environment variables from .env file if it exists
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,10 +26,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zx@!le9j-v_%!3p=t7(eg!&)eb)5$zdbn=v&pl&-qbm434%^j+'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-zx@!le9j-v_%!3p=t7(eg!&)eb)5$zdbn=v&pl&-qbm434%^j+')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
 ALLOWED_HOSTS = ['tripwise-7jbg.onrender.com', 'localhost', '127.0.0.1']
 
@@ -100,13 +106,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-import dj_database_url
+# Database configuration
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://resdb_owner:UVrE8O4qjGJP@ep-delicate-recipe-a2cys50e-pooler.eu-central-1.aws.neon.tech/resdb?sslmode=require')
 
 DATABASES = {
-    'default': dj_database_url.parse(
-        'postgresql://resdb_owner:UVrE8O4qjGJP@ep-delicate-recipe-a2cys50e-pooler.eu-central-1.aws.neon.tech/resdb?sslmode=require',
-        conn_max_age=600,
-    )
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 }
 
 # Password validation
