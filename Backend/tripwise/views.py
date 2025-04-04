@@ -2,6 +2,7 @@ from django.shortcuts import render
 from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import authenticate, login
 from rest_framework.permissions import AllowAny
 from .serializers import DriverRegistrationSerializer, DriverLoginSerializer
@@ -9,6 +10,16 @@ from django.contrib.auth import get_user_model
 from .models import Trip  # Import the Trip model
 
 User = get_user_model()
+
+# API Status View
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_status(request):
+    return Response({
+        'status': 'online',
+        'message': 'TripWise API is running',
+        'version': '1.0.0'
+    }, status=status.HTTP_200_OK)
 
 # Driver Registration View
 class DriverRegistrationView(generics.CreateAPIView):
