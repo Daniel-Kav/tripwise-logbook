@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from .serializers import DriverRegistrationSerializer, DriverLoginSerializer
 from django.contrib.auth import get_user_model
 from .models import Trip  # Import the Trip model
+import datetime
 
 User = get_user_model()
 
@@ -19,6 +20,15 @@ def api_status(request):
         'status': 'online',
         'message': 'TripWise API is running',
         'version': '1.0.0'
+    }, status=status.HTTP_200_OK)
+
+# Simple ping endpoint for keeping the backend awake
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def ping(request):
+    return Response({
+        'status': 'alive',
+        'timestamp': str(datetime.datetime.now())
     }, status=status.HTTP_200_OK)
 
 # Driver Registration View
