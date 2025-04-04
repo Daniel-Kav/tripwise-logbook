@@ -33,7 +33,7 @@ interface User {
 }
 
 // Simulated API URL - in a real implementation, this would point to your Django backend
-const API_URL = "http://localhost:8000/api";
+const API_URL = "https://tripwise-7jbg.onrender.com/api";
 
 export const authService = {
   // Login user
